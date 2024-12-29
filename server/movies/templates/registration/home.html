@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Welcome to Media Server</h1>
+<div class="movies">
+    {% for movie in movies %}
+        <div class="movie">
+            <a href="{% url 'movie_detail' movie.pk %}">
+                <img src="{{ movie.poster.url }}" alt="{{ movie.title }}">
+                <h3>{{ movie.title }}</h3>
+                <p>{{ movie.genre }}</p>
+            </a>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
