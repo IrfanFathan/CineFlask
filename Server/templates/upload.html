@@ -1,0 +1,9 @@
+from django import forms
+
+class MovieUploadForm(forms.Form):
+    movieTitle = forms.CharField(max_length=100)
+    movieFile = forms.FileField()
+    posterFile = forms.FileField()
+    releaseYear = forms.IntegerField(min_value=1900, max_value=2025)
+    genre = forms.CharField(max_length=50)
+    info = forms.CharField(widget=forms.Textarea, required=False)
