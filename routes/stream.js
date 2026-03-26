@@ -12,8 +12,8 @@ const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// Stream video with range support
-router.get('/:id', authMiddleware, (req, res, next) => {
+// Stream video with range support (no auth required - HTML5 video can't send custom headers)
+router.get('/:id', (req, res, next) => {
   try {
     const { id } = req.params;
 

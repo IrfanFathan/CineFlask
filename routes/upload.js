@@ -81,6 +81,15 @@ router.post('/chunk', upload.single('chunk'), (req, res, next) => {
   try {
     const { uploadId, chunkIndex, totalChunks } = req.body;
 
+    console.log('Chunk upload:', { uploadId, chunkIndex, totalChunks, hasFile: !!req.file });
+
+    if (!uploadId || chunkIndex === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing uploadId or chunkIndex in request body'
+      });
+    }
+
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -93,7 +102,14 @@ router.post('/chunk', upload.single('chunk'), (req, res, next) => {
     const properChunkName = `${uploadId}_chunk_${chunkIndex}`;
     const properChunkPath = path.join(tempDir, properChunkName);
     
+    // Check if target already exists (shouldn't happen, but just in case)
+    if (fs.existsSync(properChunkPath)) {
+      fs.unlinkSync(properChunkPath);
+    }
+    
     fs.renameSync(req.file.path, properChunkPath);
+
+    console.log(`✓ Chunk ${chunkIndex} saved as ${properChunkName}`);
 
     res.json({
       success: true,
@@ -101,6 +117,7 @@ router.post('/chunk', upload.single('chunk'), (req, res, next) => {
       chunkIndex: parseInt(chunkIndex)
     });
   } catch (error) {
+    console.error('Chunk upload error:', error);
     next(error);
   }
 });
@@ -109,6 +126,8 @@ router.post('/chunk', upload.single('chunk'), (req, res, next) => {
 router.post('/complete', async (req, res, next) => {
   try {
     const { uploadId, filename, totalChunks, title } = req.body;
+
+    console.log('Complete upload request:', { uploadId, filename, totalChunks, title });
 
     if (!uploadId || !filename || !totalChunks) {
       return res.status(400).json({
@@ -131,6 +150,8 @@ router.post('/complete', async (req, res, next) => {
     const finalFilename = `${Date.now()}_${basename}${ext}`;
     const finalPath = path.join(uploadsDir, finalFilename);
 
+    console.log(`Merging ${totalChunks} chunks into ${finalFilename}...`);
+
     // Merge chunks
     const writeStream = fs.createWriteStream(finalPath);
 
@@ -138,10 +159,12 @@ router.post('/complete', async (req, res, next) => {
       const chunkPath = path.join(tempDir, `${uploadId}_chunk_${i}`);
       
       if (!fs.existsSync(chunkPath)) {
+        console.error(`Missing chunk ${i} at ${chunkPath}`);
         throw new Error(`Missing chunk ${i}`);
       }
 
       const chunkBuffer = fs.readFileSync(chunkPath);
+      console.log(`  Chunk ${i}: ${chunkBuffer.length} bytes`);
       writeStream.write(chunkBuffer);
 
       // Delete chunk after merging
@@ -158,6 +181,7 @@ router.post('/complete', async (req, res, next) => {
 
     // Get file size
     const stats = fs.statSync(finalPath);
+    console.log(`✓ Final file size: ${stats.size} bytes`);
 
     // Fetch metadata from OMDB
     const movieTitle = title || basename;
@@ -189,6 +213,8 @@ router.post('/complete', async (req, res, next) => {
 
     const movie = db.prepare('SELECT * FROM movies WHERE id = ?').get(result.lastInsertRowid);
 
+    console.log(`✓ Movie added to database with ID ${movie.id}`);
+
     res.json({
       success: true,
       message: 'Upload completed successfully',
@@ -196,6 +222,7 @@ router.post('/complete', async (req, res, next) => {
     });
 
   } catch (error) {
+    console.error('Complete upload error:', error);
     next(error);
   }
 });
