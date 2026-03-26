@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movie - CineLocal</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .movie-detail-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: var(--space-2xl) var(--space-lg);
+    }
+
+    .movie-detail-content {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: var(--space-2xl);
+      margin-bottom: var(--space-2xl);
+    }
+
+    .movie-detail-poster {
+      width: 100%;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .movie-detail-info h1 {
+      margin-bottom: var(--space-md);
+    }
+
+    .movie-detail-meta {
+      display: flex;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+      margin-bottom: var(--space-lg);
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+    }
+
+    .movie-detail-rating {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--rating-star);
+      font-weight: 600;
+    }
+
+    .movie-detail-actions {
+      display: flex;
+      gap: var(--space-md);
+      margin-bottom: var(--space-xl);
+    }
+
+    .movie-detail-section {
+      margin-bottom: var(--space-lg);
+    }
+
+    .movie-detail-section h3 {
+      margin-bottom: var(--space-sm);
+      color: var(--text-secondary);
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: var(--tracking-wide);
+    }
+
+    .movie-detail-section p {
+      line-height: var(--leading-relaxed);
+    }
+
+    .cast-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+    }
+
+    .cast-chip {
+      padding: var(--space-sm) var(--space-md);
+      background: var(--bg-card);
+      border-radius: 20px;
+      font-size: var(--text-xs);
+    }
+
+    .back-button {
+      margin-bottom: var(--space-lg);
+    }
+
+    @media (max-width: 600px) {
+      .movie-detail-content {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+
+      .movie-detail-poster {
+        max-width: 300px;
+        margin: 0 auto;
+      }
+
+      .movie-detail-actions {
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="navbar-spacer"></div>
+
+  <div class="movie-detail-container">
+    <button class="btn btn-secondary back-button" onclick="history.back()">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="m15 18-6-6 6-6"></path>
+      </svg>
+      Back
+    </button>
+
+    <div id="movie-content">
+      <div style="text-align: center; padding: var(--space-2xl);">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="/js/utils.js"></script>
+  <script>
+    requireAuth();
+
+    const profile = getProfile();
+    const movieId = getURLParam('id');
+
+    if (!movieId) {
+      window.location.href = '/home.html';
+    }
+
+    async function loadMovie() {
+      try {
+        const data = await fetchAPI(`/movies/${movieId}?profile_id=${profile?.id || ''}`);
+        const movie = data.movie;
+
+        const contentDiv = document.getElementById('movie-content');
+        contentDiv.innerHTML = `
+          <div class="movie-detail-content">
+            <img 
+              src="${movie.poster_url || '/images/placeholder.png'}" 
+              alt="${movie.title} poster" 
+              class="movie-detail-poster"
+            >
+
+            <div class="movie-detail-info">
+              <h1>${movie.title}</h1>
+
+              <div class="movie-detail-meta">
+                <span>${movie.year}</span>
+                ${movie.runtime ? `<span>${movie.runtime}</span>` : ''}
+                ${movie.imdb_rating ? `
+                  <span class="movie-detail-rating">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                    ${movie.imdb_rating} IMDb
+                  </span>
+                ` : ''}
+              </div>
+
+              <div class="movie-detail-actions">
+                <button class="btn btn-primary" onclick="playMovie()">
+                  <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                  Play
+                </button>
+
+                <button class="btn btn-secondary" id="watchlist-btn" onclick="toggleWatchlist()">
+                  ${movie.in_watchlist ? '❤️ In Watchlist' : '🤍 Add to Watchlist'}
+                </button>
+              </div>
+
+              ${movie.description ? `
+                <div class="movie-detail-section">
+                  <h3>Plot</h3>
+                  <p>${movie.description}</p>
+                </div>
+              ` : ''}
+
+              ${movie.genre ? `
+                <div class="movie-detail-section">
+                  <h3>Genre</h3>
+                  <p>${movie.genre}</p>
+                </div>
+              ` : ''}
+
+              ${movie.director ? `
+                <div class="movie-detail-section">
+                  <h3>Director</h3>
+                  <p>${movie.director}</p>
+                </div>
+              ` : ''}
+
+              ${movie.actors ? `
+                <div class="movie-detail-section">
+                  <h3>Cast</h3>
+                  <div class="cast-chips">
+                    ${movie.actors.split(',').map(actor => 
+                      `<span class="cast-chip">${actor.trim()}</span>`
+                    ).join('')}
+                  </div>
+                </div>
+              ` : ''}
+
+              ${movie.imdb_id ? `
+                <div class="movie-detail-section">
+                  <a href="https://www.imdb.com/title/${movie.imdb_id}" target="_blank" class="btn btn-secondary">
+                    View on IMDb
+                  </a>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+
+        document.title = `${movie.title} - CineLocal`;
+      } catch (error) {
+        showToast(error.message, 'error');
+        setTimeout(() => window.location.href = '/home.html', 2000);
+      }
+    }
+
+    function playMovie() {
+      window.location.href = `/player.html?id=${movieId}`;
+    }
+
+    async function toggleWatchlist() {
+      try {
+        const btn = document.getElementById('watchlist-btn');
+        const isInWatchlist = btn.textContent.includes('In Watchlist');
+
+        if (isInWatchlist) {
+          await fetchAPI(`/watchlist/${movieId}?profile_id=${profile?.id || ''}`, {
+            method: 'DELETE'
+          });
+          btn.textContent = '🤍 Add to Watchlist';
+          showToast('Removed from watchlist', 'success');
+        } else {
+          await fetchAPI('/watchlist', {
+            method: 'POST',
+            body: JSON.stringify({
+              movie_id: movieId,
+              profile_id: profile?.id || null
+            })
+          });
+          btn.textContent = '❤️ In Watchlist';
+          showToast('Added to watchlist', 'success');
+        }
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    }
+
+    loadMovie();
+  </script>
+</body>
+</html>

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home - CineLocal</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar" id="navbar">
+    <div class="navbar-content">
+      <a href="/home.html" class="navbar-logo">
+        <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+        CineLocal
+      </a>
+
+      <div class="navbar-actions">
+        <div class="navbar-search">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input 
+            type="text" 
+            id="search-input" 
+            placeholder="Search movies..." 
+            autocomplete="off"
+          >
+        </div>
+
+        <a href="/upload.html" class="btn btn-primary">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"></path>
+          </svg>
+          Upload
+        </a>
+
+        <div class="user-avatar" id="user-avatar" onclick="toggleUserMenu()">
+          <!-- Profile initial -->
+        </div>
+
+        <!-- User dropdown menu (hidden by default) -->
+        <div id="user-menu" style="display: none; position: absolute; top: 60px; right: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-sm); z-index: 1001;">
+          <button class="btn btn-secondary" style="width: 100%; margin-bottom: var(--space-sm);" onclick="switchProfile()">Switch Profile</button>
+          <button class="btn btn-secondary" style="width: 100%;" onclick="logout()">Logout</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="navbar-spacer"></div>
+
+  <!-- Hero Banner -->
+  <section class="hero" id="hero-section" style="display: none;">
+    <img id="hero-bg" class="hero-background" alt="">
+    <div class="hero-content">
+      <img id="hero-poster" class="hero-poster" alt="">
+      <div class="hero-info">
+        <h1 class="hero-title" id="hero-title"></h1>
+        <div class="hero-metadata" id="hero-metadata"></div>
+        <p class="hero-description" id="hero-description"></p>
+        <div class="hero-actions">
+          <button class="btn btn-primary" id="hero-play-btn">
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+            Play
+          </button>
+          <button class="btn btn-secondary" id="hero-info-btn">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 16v-4M12 8h.01"></path>
+            </svg>
+            More Info
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="container">
+    <!-- Continue Watching -->
+    <section class="section" id="continue-watching-section" style="display: none;">
+      <div class="section-header">
+        <h2 class="section-title">Continue Watching</h2>
+      </div>
+      <div class="scroll-row" id="continue-watching-row"></div>
+    </section>
+
+    <!-- My Watchlist -->
+    <section class="section" id="watchlist-section" style="display: none;">
+      <div class="section-header">
+        <h2 class="section-title">My Watchlist</h2>
+      </div>
+      <div class="scroll-row" id="watchlist-row"></div>
+    </section>
+
+    <!-- All Movies -->
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">All Movies</h2>
+      </div>
+      <div class="movie-grid" id="movies-grid"></div>
+    </section>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="/js/utils.js"></script>
+  <script>
+    requireAuth();
+
+    const profile = getProfile();
+    if (!profile) {
+      window.location.href = '/profiles.html';
+    }
+
+    // Update user avatar
+    document.getElementById('user-avatar').textContent = getInitials(profile.profile_name);
+    document.getElementById('user-avatar').style.background = profile.avatar_color;
+
+    let allMovies = [];
+    let continueWatchingMovies = [];
+    let watchlistMovies = [];
+    let heroMovieIndex = 0;
+
+    // Load all data
+    async function loadData() {
+      try {
+        // Fetch all movies
+        const moviesData = await fetchAPI(`/movies?profile_id=${profile.id}`);
+        allMovies = moviesData.movies;
+
+        // Fetch continue watching
+        const progressData = await fetchAPI(`/progress?profile_id=${profile.id}`);
+        continueWatchingMovies = progressData.movies;
+
+        // Fetch watchlist
+        const watchlistData = await fetchAPI(`/watchlist?profile_id=${profile.id}`);
+        watchlistMovies = watchlistData.movies;
+
+        renderAll();
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    }
+
+    function renderAll() {
+      renderHero();
+      renderContinueWatching();
+      renderWatchlist();
+      renderMovies(allMovies);
+    }
+
+    function renderHero() {
+      if (allMovies.length === 0) return;
+
+      // Get latest 5 movies for hero rotation
+      const heroMovies = allMovies.slice(0, 5);
+      const movie = heroMovies[heroMovieIndex % heroMovies.length];
+
+      document.getElementById('hero-section').style.display = 'flex';
+      document.getElementById('hero-bg').src = movie.poster_url || '';
+      document.getElementById('hero-poster').src = movie.poster_url || '';
+      document.getElementById('hero-poster').alt = movie.title + ' poster';
+      document.getElementById('hero-title').textContent = movie.title;
+      
+      const metadata = [
+        movie.year,
+        movie.runtime,
+        movie.imdb_rating ? `⭐ ${movie.imdb_rating}` : null
+      ].filter(Boolean).join(' · ');
+      
+      document.getElementById('hero-metadata').textContent = metadata;
+      document.getElementById('hero-description').textContent = movie.description;
+
+      document.getElementById('hero-play-btn').onclick = () => {
+        window.location.href = `/player.html?id=${movie.id}`;
+      };
+
+      document.getElementById('hero-info-btn').onclick = () => {
+        window.location.href = `/movie.html?id=${movie.id}`;
+      };
+
+      // Auto-rotate hero every 8 seconds
+      setTimeout(() => {
+        heroMovieIndex++;
+        renderHero();
+      }, 8000);
+    }
+
+    function renderContinueWatching() {
+      if (continueWatchingMovies.length === 0) {
+        document.getElementById('continue-watching-section').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('continue-watching-section').style.display = 'block';
+      const row = document.getElementById('continue-watching-row');
+      row.innerHTML = continueWatchingMovies.map(item => 
+        createMovieCard(item, item.progress_percentage)
+      ).join('');
+    }
+
+    function renderWatchlist() {
+      if (watchlistMovies.length === 0) {
+        document.getElementById('watchlist-section').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('watchlist-section').style.display = 'block';
+      const row = document.getElementById('watchlist-row');
+      row.innerHTML = watchlistMovies.map(movie => 
+        createMovieCard(movie)
+      ).join('');
+    }
+
+    function renderMovies(movies) {
+      const grid = document.getElementById('movies-grid');
+      if (movies.length === 0) {
+        grid.innerHTML = '<p style="color: var(--text-secondary);">No movies yet. Upload some to get started!</p>';
+        return;
+      }
+      grid.innerHTML = movies.map(movie => createMovieCard(movie)).join('');
+    }
+
+    // Search functionality
+    const searchInput = document.getElementById('search-input');
+    searchInput.addEventListener('input', debounce(async (e) => {
+      const query = e.target.value.trim();
+      
+      if (!query) {
+        renderMovies(allMovies);
+        return;
+      }
+
+      try {
+        const data = await fetchAPI(`/movies?q=${encodeURIComponent(query)}&profile_id=${profile.id}`);
+        renderMovies(data.movies);
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    }, 300));
+
+    // Navbar scroll effect
+    let lastScroll = 0;
+    window.addEventListener('scroll', () => {
+      const navbar = document.getElementById('navbar');
+      const currentScroll = window.pageYOffset;
+
+      if (currentScroll > 50) {
+        navbar.classList.remove('transparent');
+      } else {
+        navbar.classList.add('transparent');
+      }
+
+      lastScroll = currentScroll;
+    });
+
+    // User menu toggle
+    function toggleUserMenu() {
+      const menu = document.getElementById('user-menu');
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function switchProfile() {
+      sessionStorage.removeItem('cinelocal_profile');
+      window.location.href = '/profiles.html';
+    }
+
+    // Close user menu when clicking outside
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('user-menu');
+      const avatar = document.getElementById('user-avatar');
+      if (!menu.contains(e.target) && !avatar.contains(e.target)) {
+        menu.style.display = 'none';
+      }
+    });
+
+    loadData();
+  </script>
+</body>
+</html>

@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player - CineLocal</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body {
+      background: #000;
+      overflow: hidden;
+    }
+
+    .player-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .player-controls {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+      padding: var(--space-2xl) var(--space-lg) var(--space-lg);
+      transition: opacity 0.3s, transform 0.3s;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .player-controls.hidden {
+      opacity: 0;
+      transform: translateY(100%);
+      pointer-events: none;
+    }
+
+    .back-button-player {
+      position: absolute;
+      top: var(--space-lg);
+      left: var(--space-lg);
+      z-index: 10;
+      transition: opacity 0.3s;
+    }
+
+    .back-button-player.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .seek-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+      margin-bottom: var(--space-md);
+      cursor: pointer;
+      position: relative;
+    }
+
+    .seek-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
+      position: relative;
+    }
+
+    .seek-bar-thumb {
+      position: absolute;
+      right: -8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      background: white;
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .seek-bar:hover .seek-bar-thumb {
+      opacity: 1;
+    }
+
+    .controls-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .play-pause-btn {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      padding: 0;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .time-display {
+      font-size: var(--text-sm);
+      color: white;
+      min-width: 120px;
+    }
+
+    .volume-control {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .volume-slider {
+      width: 80px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 2px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .volume-slider-fill {
+      height: 100%;
+      background: white;
+      border-radius: 2px;
+    }
+
+    .fullscreen-btn {
+      margin-left: auto;
+    }
+
+    .resume-toast {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-xl);
+      text-align: center;
+      z-index: 100;
+      max-width: 400px;
+    }
+
+    .resume-toast h3 {
+      margin-bottom: var(--space-md);
+    }
+
+    .resume-toast-buttons {
+      display: flex;
+      gap: var(--space-md);
+      justify-content: center;
+      margin-top: var(--space-lg);
+    }
+  </style>
+</head>
+<body>
+  <div class="player-container" id="player-container">
+    <video id="video-player" playsinline></video>
+
+    <button class="btn btn-secondary back-button-player" id="back-btn" onclick="goBack()">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="m15 18-6-6 6-6"></path>
+      </svg>
+      Back
+    </button>
+
+    <!-- Resume Toast -->
+    <div id="resume-toast" class="resume-toast" style="display: none;">
+      <h3>Resume Watching?</h3>
+      <p id="resume-time"></p>
+      <div class="resume-toast-buttons">
+        <button class="btn btn-primary" onclick="resumePlayback()">Resume</button>
+        <button class="btn btn-secondary" onclick="startOver()">Start Over</button>
+      </div>
+    </div>
+
+    <!-- Player Controls -->
+    <div class="player-controls" id="player-controls">
+      <div class="seek-bar" id="seek-bar">
+        <div class="seek-bar-fill" id="seek-bar-fill">
+          <div class="seek-bar-thumb"></div>
+        </div>
+      </div>
+
+      <div class="controls-row">
+        <button class="play-pause-btn" id="play-pause-btn">
+          <svg id="play-icon" width="32" height="32" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          <svg id="pause-icon" width="32" height="32" fill="currentColor" viewBox="0 0 24 24" style="display: none;">
+            <path d="M6 4h4v16H6zM14 4h4v16h-4z"/>
+          </svg>
+        </button>
+
+        <div class="time-display" id="time-display">0:00 / 0:00</div>
+
+        <div class="volume-control">
+          <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07M19.07 5.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+          <div class="volume-slider" id="volume-slider">
+            <div class="volume-slider-fill" id="volume-slider-fill"></div>
+          </div>
+        </div>
+
+        <button class="play-pause-btn fullscreen-btn" id="fullscreen-btn">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/utils.js"></script>
+  <script>
+    requireAuth();
+
+    const profile = getProfile();
+    const movieId = getURLParam('id');
+
+    if (!movieId) {
+      window.location.href = '/home.html';
+    }
+
+    const video = document.getElementById('video-player');
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    const playIcon = document.getElementById('play-icon');
+    const pauseIcon = document.getElementById('pause-icon');
+    const seekBar = document.getElementById('seek-bar');
+    const seekBarFill = document.getElementById('seek-bar-fill');
+    const timeDisplay = document.getElementById('time-display');
+    const volumeSlider = document.getElementById('volume-slider');
+    const volumeSliderFill = document.getElementById('volume-slider-fill');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const playerControls = document.getElementById('player-controls');
+    const backBtn = document.getElementById('back-btn');
+    const playerContainer = document.getElementById('player-container');
+
+    let savedProgress = null;
+    let controlsTimeout = null;
+    let progressSaveInterval = null;
+
+    // Load video
+    video.src = `/api/stream/${movieId}`;
+
+    // Check for saved progress
+    async function checkProgress() {
+      try {
+        const data = await fetchAPI(`/progress/${movieId}?profile_id=${profile?.id || ''}`);
+        if (data.progress && data.progress.timestamp_seconds > 30) {
+          savedProgress = data.progress;
+          document.getElementById('resume-time').textContent = 
+            `Continue from ${formatTime(savedProgress.timestamp_seconds)}`;
+          document.getElementById('resume-toast').style.display = 'block';
+        } else {
+          video.play();
+        }
+      } catch (error) {
+        console.error('Failed to load progress:', error);
+        video.play();
+      }
+    }
+
+    function resumePlayback() {
+      if (savedProgress) {
+        video.currentTime = savedProgress.timestamp_seconds;
+      }
+      document.getElementById('resume-toast').style.display = 'none';
+      video.play();
+    }
+
+    function startOver() {
+      video.currentTime = 0;
+      document.getElementById('resume-toast').style.display = 'none';
+      video.play();
+    }
+
+    // Play/Pause
+    playPauseBtn.onclick = () => {
+      if (video.paused) {
+        video.play();
+      } else {
+        video.pause();
+      }
+    };
+
+    video.addEventListener('play', () => {
+      playIcon.style.display = 'none';
+      pauseIcon.style.display = 'block';
+    });
+
+    video.addEventListener('pause', () => {
+      playIcon.style.display = 'block';
+      pauseIcon.style.display = 'none';
+    });
+
+    // Click video to play/pause
+    video.onclick = () => playPauseBtn.click();
+
+    // Seek bar
+    seekBar.onclick = (e) => {
+      const rect = seekBar.getBoundingClientRect();
+      const percent = (e.clientX - rect.left) / rect.width;
+      video.currentTime = percent * video.duration;
+    };
+
+    video.addEventListener('timeupdate', () => {
+      const percent = (video.currentTime / video.duration) * 100;
+      seekBarFill.style.width = percent + '%';
+      timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+    });
+
+    // Volume
+    volumeSlider.onclick = (e) => {
+      const rect = volumeSlider.getBoundingClientRect();
+      const percent = (e.clientX - rect.left) / rect.width;
+      video.volume = Math.max(0, Math.min(1, percent));
+      volumeSliderFill.style.width = (percent * 100) + '%';
+    };
+
+    video.volume = 1;
+    volumeSliderFill.style.width = '100%';
+
+    // Fullscreen
+    fullscreenBtn.onclick = () => {
+      if (!document.fullscreenElement) {
+        playerContainer.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    };
+
+    // Hide controls after 3 seconds of inactivity
+    function resetControlsTimeout() {
+      playerControls.classList.remove('hidden');
+      backBtn.classList.remove('hidden');
+      clearTimeout(controlsTimeout);
+      
+      if (!video.paused) {
+        controlsTimeout = setTimeout(() => {
+          playerControls.classList.add('hidden');
+          backBtn.classList.add('hidden');
+        }, 3000);
+      }
+    }
+
+    playerContainer.addEventListener('mousemove', resetControlsTimeout);
+    playerContainer.addEventListener('touchstart', resetControlsTimeout);
+    video.addEventListener('play', resetControlsTimeout);
+    video.addEventListener('pause', () => {
+      clearTimeout(controlsTimeout);
+      playerControls.classList.remove('hidden');
+      backBtn.classList.remove('hidden');
+    });
+
+    // Save progress every 10 seconds
+    video.addEventListener('play', () => {
+      progressSaveInterval = setInterval(saveProgress, 10000);
+    });
+
+    video.addEventListener('pause', () => {
+      clearInterval(progressSaveInterval);
+      saveProgress();
+    });
+
+    video.addEventListener('ended', () => {
+      clearInterval(progressSaveInterval);
+      // Mark as 100% complete
+      saveProgress(true);
+    });
+
+    async function saveProgress(completed = false) {
+      try {
+        await fetchAPI('/progress', {
+          method: 'POST',
+          body: JSON.stringify({
+            movie_id: movieId,
+            profile_id: profile?.id || null,
+            timestamp_seconds: completed ? video.duration : video.currentTime,
+            duration_seconds: video.duration
+          })
+        });
+      } catch (error) {
+        console.error('Failed to save progress:', error);
+      }
+    }
+
+    function goBack() {
+      saveProgress();
+      window.location.href = `/movie.html?id=${movieId}`;
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      switch (e.key) {
+        case ' ':
+          e.preventDefault();
+          playPauseBtn.click();
+          break;
+        case 'ArrowLeft':
+          video.currentTime = Math.max(0, video.currentTime - 10);
+          break;
+        case 'ArrowRight':
+          video.currentTime = Math.min(video.duration, video.currentTime + 10);
+          break;
+        case 'f':
+          fullscreenBtn.click();
+          break;
+        case 'Escape':
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+          }
+          break;
+      }
+    });
+
+    // Initialize
+    video.addEventListener('loadedmetadata', () => {
+      checkProgress();
+    });
+
+    // Prevent accidental page navigation
+    window.addEventListener('beforeunload', (e) => {
+      if (!video.paused) {
+        saveProgress();
+      }
+    });
+  </script>
+</body>
+</html>

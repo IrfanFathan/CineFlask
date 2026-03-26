@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CineLocal - Your Private Cinema</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <!-- Logo -->
+      <div class="auth-logo">
+        <div class="navbar-logo">
+          <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          CineLocal
+        </div>
+        <p class="auth-tagline">Your private cinema, on any screen.</p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">
+          Sign In
+        </button>
+        <button class="auth-tab" id="tab-register" onclick="switchTab('register')">
+          Register
+        </button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" style="display: block;">
+        <div class="form-group">
+          <label class="form-label" for="login-username">Username</label>
+          <input 
+            type="text" 
+            id="login-username" 
+            class="form-input" 
+            placeholder="Enter your username"
+            required
+            autocomplete="username"
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="login-password">Password</label>
+          <input 
+            type="password" 
+            id="login-password" 
+            class="form-input" 
+            placeholder="Enter your password"
+            required
+            autocomplete="current-password"
+          >
+        </div>
+
+        <div id="login-error" class="form-error" style="display: none;"></div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          <span id="login-btn-text">Sign In</span>
+          <span id="login-spinner" class="spinner" style="display: none;"></span>
+        </button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="register-form" style="display: none;">
+        <div class="form-group">
+          <label class="form-label" for="register-username">Username</label>
+          <input 
+            type="text" 
+            id="register-username" 
+            class="form-input" 
+            placeholder="Choose a username (min 3 characters)"
+            required
+            autocomplete="username"
+            minlength="3"
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="register-password">Password</label>
+          <input 
+            type="password" 
+            id="register-password" 
+            class="form-input" 
+            placeholder="Choose a password (min 6 characters)"
+            required
+            autocomplete="new-password"
+            minlength="6"
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="register-password-confirm">Confirm Password</label>
+          <input 
+            type="password" 
+            id="register-password-confirm" 
+            class="form-input" 
+            placeholder="Re-enter your password"
+            required
+            autocomplete="new-password"
+            minlength="6"
+          >
+        </div>
+
+        <div id="register-error" class="form-error" style="display: none;"></div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          <span id="register-btn-text">Create Account</span>
+          <span id="register-spinner" class="spinner" style="display: none;"></span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/utils.js"></script>
+  <script>
+    // Check if already logged in
+    if (isAuthenticated()) {
+      window.location.href = '/profiles.html';
+    }
+
+    // Switch between login and register tabs
+    function switchTab(tab) {
+      const loginTab = document.getElementById('tab-login');
+      const registerTab = document.getElementById('tab-register');
+      const loginForm = document.getElementById('login-form');
+      const registerForm = document.getElementById('register-form');
+
+      if (tab === 'login') {
+        loginTab.classList.add('active');
+        registerTab.classList.remove('active');
+        loginForm.style.display = 'block';
+        registerForm.style.display = 'none';
+      } else {
+        registerTab.classList.add('active');
+        loginTab.classList.remove('active');
+        registerForm.style.display = 'block';
+        loginForm.style.display = 'none';
+      }
+
+      // Clear errors
+      document.getElementById('login-error').style.display = 'none';
+      document.getElementById('register-error').style.display = 'none';
+    }
+
+    // Handle login
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const username = document.getElementById('login-username').value;
+      const password = document.getElementById('login-password').value;
+      const errorDiv = document.getElementById('login-error');
+      const btnText = document.getElementById('login-btn-text');
+      const spinner = document.getElementById('login-spinner');
+
+      // Show loading
+      btnText.style.display = 'none';
+      spinner.style.display = 'inline-block';
+      errorDiv.style.display = 'none';
+
+      try {
+        const data = await fetchAPI('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ username, password })
+        });
+
+        // Save token and user
+        setToken(data.token);
+        setUser(data.user);
+
+        // Redirect to profiles
+        window.location.href = '/profiles.html';
+      } catch (error) {
+        errorDiv.textContent = error.message;
+        errorDiv.style.display = 'block';
+        btnText.style.display = 'inline';
+        spinner.style.display = 'none';
+      }
+    });
+
+    // Handle register
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const username = document.getElementById('register-username').value;
+      const password = document.getElementById('register-password').value;
+      const passwordConfirm = document.getElementById('register-password-confirm').value;
+      const errorDiv = document.getElementById('register-error');
+      const btnText = document.getElementById('register-btn-text');
+      const spinner = document.getElementById('register-spinner');
+
+      // Validate passwords match
+      if (password !== passwordConfirm) {
+        errorDiv.textContent = 'Passwords do not match';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      // Show loading
+      btnText.style.display = 'none';
+      spinner.style.display = 'inline-block';
+      errorDiv.style.display = 'none';
+
+      try {
+        const data = await fetchAPI('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({ username, password })
+        });
+
+        // Save token and user
+        setToken(data.token);
+        setUser(data.user);
+
+        // Redirect to profiles
+        window.location.href = '/profiles.html';
+      } catch (error) {
+        errorDiv.textContent = error.message;
+        errorDiv.style.display = 'block';
+        btnText.style.display = 'inline';
+        spinner.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

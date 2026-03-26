@@ -1,0 +1,27 @@
+{
+  "name": "cinelocal",
+  "version": "1.0.0",
+  "description": "Local Wi-Fi movie streaming platform - your private cinema on any screen",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "setup": "node database/init.js"
+  },
+  "keywords": ["streaming", "movies", "local", "media-server", "plex-alternative"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "better-sqlite3": "^9.4.0",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "node-fetch": "^3.3.2",
+    "dotenv": "^16.4.5",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  }
+}

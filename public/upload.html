@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Movie - CineLocal</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .upload-container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: var(--space-2xl) var(--space-lg);
+    }
+
+    .upload-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-2xl);
+    }
+
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-2xl);
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition-base);
+      margin-bottom: var(--space-lg);
+    }
+
+    .upload-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(124, 92, 252, 0.1);
+      border-style: solid;
+    }
+
+    .upload-zone:hover {
+      border-color: var(--accent);
+    }
+
+    .upload-zone-icon {
+      margin-bottom: var(--space-md);
+      color: var(--text-muted);
+    }
+
+    .upload-zone.dragover .upload-zone-icon {
+      color: var(--accent);
+    }
+
+    .upload-zone-text {
+      font-size: var(--text-body-lg);
+      margin-bottom: var(--space-sm);
+    }
+
+    .upload-zone-subtext {
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+    }
+
+    #file-input {
+      display: none;
+    }
+
+    .progress-container {
+      display: none;
+      margin-top: var(--space-lg);
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: var(--space-sm);
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.3s;
+      border-radius: 4px;
+    }
+
+    .progress-text {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+      text-align: center;
+    }
+
+    .status-message {
+      padding: var(--space-md);
+      border-radius: var(--radius-md);
+      margin-top: var(--space-lg);
+      display: none;
+    }
+
+    .status-message.success {
+      background: rgba(82, 224, 154, 0.1);
+      border: 1px solid var(--success);
+      color: var(--success);
+    }
+
+    .status-message.error {
+      background: rgba(224, 82, 82, 0.1);
+      border: 1px solid var(--danger);
+      color: var(--danger);
+    }
+
+    .movie-preview {
+      display: none;
+      margin-top: var(--space-xl);
+      padding-top: var(--space-xl);
+      border-top: 1px solid var(--border);
+    }
+
+    .back-button-upload {
+      margin-bottom: var(--space-lg);
+    }
+  </style>
+</head>
+<body>
+  <div class="navbar-spacer"></div>
+
+  <div class="upload-container">
+    <button class="btn btn-secondary back-button-upload" onclick="window.location.href='/home.html'">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="m15 18-6-6 6-6"></path>
+      </svg>
+      Back to Home
+    </button>
+
+    <h1 style="margin-bottom: var(--space-lg);">Upload Movie</h1>
+
+    <div class="upload-card">
+      <div class="upload-zone" id="upload-zone">
+        <div class="upload-zone-icon">
+          <svg width="64" height="64" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"></path>
+          </svg>
+        </div>
+        <div class="upload-zone-text">Drop video file here or click to browse</div>
+        <div class="upload-zone-subtext">Supported formats: MP4, MKV, AVI, MOV, WebM (up to 50GB)</div>
+      </div>
+
+      <input type="file" id="file-input" accept="video/*,.mkv,.avi">
+
+      <div class="form-group">
+        <label class="form-label" for="movie-title">Movie Title (optional)</label>
+        <input 
+          type="text" 
+          id="movie-title" 
+          class="form-input" 
+          placeholder="Leave blank to auto-detect from filename"
+        >
+        <small style="color: var(--text-muted); font-size: var(--text-xs); display: block; margin-top: var(--space-sm);">
+          Used for OMDB metadata lookup. If blank, we'll extract from filename.
+        </small>
+      </div>
+
+      <button class="btn btn-primary" id="upload-btn" style="width: 100%;" disabled>
+        Select a File to Continue
+      </button>
+
+      <button class="btn btn-secondary" id="cancel-btn" style="width: 100%; margin-top: var(--space-md); display: none;">
+        Cancel Upload
+      </button>
+
+      <div class="progress-container" id="progress-container">
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div class="progress-text" id="progress-text">Preparing upload...</div>
+      </div>
+
+      <div class="status-message" id="status-message"></div>
+
+      <div class="movie-preview" id="movie-preview">
+        <h3 style="margin-bottom: var(--space-md);">Upload Complete!</h3>
+        <div id="preview-card"></div>
+        <button class="btn btn-primary" style="width: 100%; margin-top: var(--space-lg);" onclick="window.location.href='/home.html'">
+          View in Library
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/utils.js"></script>
+  <script>
+    requireAuth();
+
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('file-input');
+    const movieTitle = document.getElementById('movie-title');
+    const uploadBtn = document.getElementById('upload-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const statusMessage = document.getElementById('status-message');
+    const moviePreview = document.getElementById('movie-preview');
+
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+    let selectedFile = null;
+    let uploadId = null;
+    let isUploading = false;
+
+    // Upload zone interactions
+    uploadZone.onclick = () => fileInput.click();
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFileSelect(files[0]);
+      }
+    });
+
+    fileInput.onchange = (e) => {
+      if (e.target.files.length > 0) {
+        handleFileSelect(e.target.files[0]);
+      }
+    };
+
+    function handleFileSelect(file) {
+      const validExts = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.m4v'];
+      const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+      if (!validExts.includes(ext)) {
+        showStatus(`Invalid file type. Allowed: ${validExts.join(', ')}`, 'error');
+        return;
+      }
+
+      selectedFile = file;
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = `Upload ${file.name} (${formatFileSize(file.size)})`;
+
+      // Auto-fill title if empty
+      if (!movieTitle.value) {
+        const titleFromFilename = file.name
+          .replace(/\.[^/.]+$/, '') // Remove extension
+          .replace(/[._]/g, ' ')    // Replace dots/underscores with spaces
+          .replace(/\d{4}/g, '')    // Remove years
+          .trim();
+        movieTitle.value = titleFromFilename;
+      }
+    }
+
+    uploadBtn.onclick = async () => {
+      if (!selectedFile || isUploading) return;
+
+      isUploading = true;
+      uploadBtn.style.display = 'none';
+      cancelBtn.style.display = 'block';
+      progressContainer.style.display = 'block';
+      statusMessage.style.display = 'none';
+
+      try {
+        // Step 1: Initialize upload
+        progressText.textContent = 'Initializing upload...';
+        const totalChunks = Math.ceil(selectedFile.size / CHUNK_SIZE);
+
+        const initData = await fetchAPI('/upload/init', {
+          method: 'POST',
+          body: JSON.stringify({
+            filename: selectedFile.name,
+            fileSize: selectedFile.size,
+            totalChunks
+          })
+        });
+
+        uploadId = initData.uploadId;
+
+        // Step 2: Upload chunks
+        for (let i = 0; i < totalChunks; i++) {
+          if (!isUploading) break; // Upload cancelled
+
+          const start = i * CHUNK_SIZE;
+          const end = Math.min(start + CHUNK_SIZE, selectedFile.size);
+          const chunk = selectedFile.slice(start, end);
+
+          const formData = new FormData();
+          formData.append('chunk', chunk);
+          formData.append('uploadId', uploadId);
+          formData.append('chunkIndex', i);
+          formData.append('totalChunks', totalChunks);
+
+          await fetch('/api/upload/chunk', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${getToken()}`
+            },
+            body: formData
+          });
+
+          const percent = ((i + 1) / totalChunks) * 100;
+          progressBar.style.width = percent + '%';
+          progressText.textContent = `Uploading... ${Math.round(percent)}% (${i + 1}/${totalChunks} chunks)`;
+        }
+
+        if (!isUploading) {
+          showStatus('Upload cancelled', 'error');
+          resetUpload();
+          return;
+        }
+
+        // Step 3: Complete upload and fetch metadata
+        progressText.textContent = 'Processing and fetching metadata from OMDB...';
+        progressBar.style.width = '100%';
+
+        const completeData = await fetchAPI('/upload/complete', {
+          method: 'POST',
+          body: JSON.stringify({
+            uploadId,
+            filename: selectedFile.name,
+            totalChunks,
+            title: movieTitle.value || null
+          })
+        });
+
+        // Show success and preview
+        showStatus('Upload successful!', 'success');
+        displayMoviePreview(completeData.movie);
+        resetUpload();
+
+      } catch (error) {
+        showStatus(error.message, 'error');
+        resetUpload();
+      }
+    };
+
+    cancelBtn.onclick = async () => {
+      if (!confirm('Are you sure you want to cancel the upload?')) return;
+
+      isUploading = false;
+
+      if (uploadId) {
+        try {
+          await fetchAPI('/upload/cancel', {
+            method: 'POST',
+            body: JSON.stringify({ uploadId })
+          });
+        } catch (error) {
+          console.error('Cancel failed:', error);
+        }
+      }
+
+      resetUpload();
+    };
+
+    function resetUpload() {
+      isUploading = false;
+      uploadBtn.style.display = 'block';
+      uploadBtn.disabled = !selectedFile;
+      cancelBtn.style.display = 'none';
+      progressContainer.style.display = 'none';
+      progressBar.style.width = '0%';
+    }
+
+    function showStatus(message, type) {
+      statusMessage.textContent = message;
+      statusMessage.className = `status-message ${type}`;
+      statusMessage.style.display = 'block';
+    }
+
+    function displayMoviePreview(movie) {
+      const previewCard = document.getElementById('preview-card');
+      previewCard.innerHTML = createMovieCard(movie);
+      moviePreview.style.display = 'block';
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+    }
+  </script>
+</body>
+</html>

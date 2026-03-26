@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Who's Watching? - CineLocal</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .profiles-container {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-lg);
+    }
+
+    .profiles-title {
+      font-size: var(--text-h1);
+      margin-bottom: var(--space-2xl);
+      text-align: center;
+    }
+
+    .profiles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: var(--space-xl);
+      max-width: 800px;
+      width: 100%;
+    }
+
+    .profile-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-lg);
+      cursor: pointer;
+      transition: transform var(--transition-base);
+    }
+
+    .profile-card:hover {
+      transform: scale(1.1);
+    }
+
+    .profile-avatar-large {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: white;
+      border: 3px solid transparent;
+      transition: border-color var(--transition-fast);
+    }
+
+    .profile-card:hover .profile-avatar-large {
+      border-color: var(--accent);
+    }
+
+    .profile-name {
+      font-size: var(--text-body-lg);
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .profile-card:hover .profile-name {
+      color: var(--text-primary);
+    }
+
+    .add-profile-card {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-md);
+    }
+
+    .add-profile-card .profile-avatar-large {
+      background: var(--bg-card);
+      color: var(--text-muted);
+    }
+
+    .logout-btn {
+      margin-top: var(--space-xl);
+    }
+  </style>
+</head>
+<body>
+  <div class="profiles-container">
+    <h1 class="profiles-title">Who's watching?</h1>
+    
+    <div class="profiles-grid" id="profiles-grid">
+      <!-- Profiles loaded here -->
+    </div>
+
+    <button class="btn btn-secondary logout-btn" onclick="logout()">
+      Logout
+    </button>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="/js/utils.js"></script>
+  <script>
+    requireAuth();
+
+    const MAX_PROFILES = 4;
+    const AVATAR_COLORS = ['#7c5cfc', '#e05252', '#52e09a', '#f5c518', '#9b7ffe', '#ff6b9d'];
+
+    async function loadProfiles() {
+      try {
+        const data = await fetchAPI('/profiles');
+        const grid = document.getElementById('profiles-grid');
+        grid.innerHTML = '';
+
+        // Render existing profiles
+        data.profiles.forEach(profile => {
+          const card = document.createElement('div');
+          card.className = 'profile-card';
+          card.onclick = () => selectProfile(profile);
+          card.innerHTML = `
+            <div class="profile-avatar-large" style="background: ${profile.avatar_color}">
+              ${getInitials(profile.profile_name)}
+            </div>
+            <div class="profile-name">${profile.profile_name}</div>
+          `;
+          grid.appendChild(card);
+        });
+
+        // Add "Add Profile" button if under limit
+        if (data.profiles.length < MAX_PROFILES) {
+          const addCard = document.createElement('div');
+          addCard.className = 'profile-card add-profile-card';
+          addCard.onclick = addProfile;
+          addCard.innerHTML = `
+            <div class="profile-avatar-large">
+              <i data-lucide="plus" style="width: 48px; height: 48px;"></i>
+            </div>
+            <div class="profile-name">Add Profile</div>
+          `;
+          grid.appendChild(addCard);
+        }
+
+        initIcons();
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    }
+
+    function selectProfile(profile) {
+      setProfile(profile);
+      window.location.href = '/home.html';
+    }
+
+    async function addProfile() {
+      const profileName = prompt('Enter profile name:');
+      if (!profileName) return;
+
+      const randomColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+
+      try {
+        await fetchAPI('/profiles', {
+          method: 'POST',
+          body: JSON.stringify({
+            profile_name: profileName,
+            avatar_color: randomColor
+          })
+        });
+
+        showToast('Profile created successfully', 'success');
+        loadProfiles();
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    }
+
+    loadProfiles();
+  </script>
+</body>
+</html>

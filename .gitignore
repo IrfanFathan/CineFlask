@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Database
+cinelocal.db
+cinelocal.db-shm
+cinelocal.db-wal
+
+# Uploads (video files)
+uploads/*
+!uploads/.gitkeep
+
+# Temp files
+temp/*
+!temp/.gitkeep
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
