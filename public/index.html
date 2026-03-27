@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CineLocal - Your Private Cinema</title>
+  
+  <!-- Preconnect to Google Fonts for faster loading -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- Load fonts with display=swap to avoid FOUT -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -12,7 +20,7 @@
       <!-- Logo -->
       <div class="auth-logo">
         <div class="navbar-logo">
-          <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24">
+          <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M8 5v14l11-7z"/>
           </svg>
           CineLocal
@@ -38,7 +46,7 @@
             type="text" 
             id="login-username" 
             class="form-input" 
-            placeholder="Enter your username"
+            placeholder="Enter your username…"
             required
             autocomplete="username"
           >
@@ -50,7 +58,7 @@
             type="password" 
             id="login-password" 
             class="form-input" 
-            placeholder="Enter your password"
+            placeholder="Enter your password…"
             required
             autocomplete="current-password"
           >
@@ -72,7 +80,7 @@
             type="text" 
             id="register-username" 
             class="form-input" 
-            placeholder="Choose a username (min 3 characters)"
+            placeholder="Choose a username (min 3 characters)…"
             required
             autocomplete="username"
             minlength="3"
@@ -85,7 +93,7 @@
             type="password" 
             id="register-password" 
             class="form-input" 
-            placeholder="Choose a password (min 6 characters)"
+            placeholder="Choose a password (min 6 characters)…"
             required
             autocomplete="new-password"
             minlength="6"
@@ -98,7 +106,7 @@
             type="password" 
             id="register-password-confirm" 
             class="form-input" 
-            placeholder="Re-enter your password"
+            placeholder="Re-enter your password…"
             required
             autocomplete="new-password"
             minlength="6"

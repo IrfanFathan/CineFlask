@@ -21,6 +21,7 @@ const uploadRoutes = require('./routes/upload');
 const streamRoutes = require('./routes/stream');
 const progressRoutes = require('./routes/progress');
 const watchlistRoutes = require('./routes/watchlist');
+const subtitleRoutes = require('./routes/subtitles');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -66,6 +67,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/stream', streamRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/watchlist', watchlistRoutes);
+app.use('/api/subtitles', subtitleRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

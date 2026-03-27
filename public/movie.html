@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Movie - CineLocal</title>
+  
+  <!-- Preconnect to Google Fonts for faster loading -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- Load fonts with display=swap to avoid FOUT -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="/css/style.css">
   <style>
     .movie-detail-container {
@@ -44,6 +52,7 @@
       gap: 4px;
       color: var(--rating-star);
       font-weight: 600;
+      font-variant-numeric: tabular-nums;
     }
 
     .movie-detail-actions {
@@ -66,6 +75,7 @@
 
     .movie-detail-section p {
       line-height: var(--leading-relaxed);
+      max-width: 65ch;
     }
 
     .cast-chips {
@@ -107,7 +117,7 @@
 
   <div class="movie-detail-container">
     <button class="btn btn-secondary back-button" onclick="history.back()">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
         <path d="m15 18-6-6 6-6"></path>
       </svg>
       Back
@@ -144,6 +154,8 @@
               src="${movie.poster_url || '/images/placeholder.png'}" 
               alt="${movie.title} poster" 
               class="movie-detail-poster"
+              width="300"
+              height="450"
             >
 
             <div class="movie-detail-info">
@@ -152,9 +164,9 @@
               <div class="movie-detail-meta">
                 <span>${movie.year}</span>
                 ${movie.runtime ? `<span>${movie.runtime}</span>` : ''}
-                ${movie.imdb_rating ? `
+                 ${movie.imdb_rating ? `
                   <span class="movie-detail-rating">
-                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                     </svg>
                     ${movie.imdb_rating} IMDb
@@ -164,7 +176,7 @@
 
               <div class="movie-detail-actions">
                 <button class="btn btn-primary" onclick="playMovie()">
-                  <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                  <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M8 5v14l11-7z"/>
                   </svg>
                   Play
@@ -214,9 +226,22 @@
                   </a>
                 </div>
               ` : ''}
+
+              <!-- Subtitles Section -->
+              <div class="movie-detail-section">
+                <h3>Subtitles</h3>
+                <div id="subtitles-list" style="margin-bottom: var(--space-md);"></div>
+                <label for="subtitle-upload-input" class="btn btn-secondary" style="cursor: pointer; margin-bottom: 0;">
+                  📄 Upload Subtitle
+                </label>
+                <input type="file" id="subtitle-upload-input" accept=".srt,.vtt" style="display: none;" onchange="uploadSubtitle(event)">
+              </div>
             </div>
           </div>
         `;
+
+        // Load subtitles
+        loadSubtitles();
 
         document.title = `${movie.title} - CineLocal`;
       } catch (error) {
@@ -251,6 +276,89 @@
           btn.textContent = '❤️ In Watchlist';
           showToast('Added to watchlist', 'success');
         }
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    }
+
+    async function loadSubtitles() {
+      try {
+        const response = await fetch(`/api/subtitles/${movieId}`);
+        const data = await response.json();
+        
+        const subtitlesList = document.getElementById('subtitles-list');
+        if (data.success && data.subtitles.length > 0) {
+          subtitlesList.innerHTML = data.subtitles.map(sub => `
+            <div class="subtitle-item">
+              <div>
+                <strong>${sub.label}</strong> (${sub.language})
+                ${sub.is_default ? '<span class="badge-label"> • Default</span>' : ''}
+              </div>
+              <button class="btn btn-secondary" onclick="deleteSubtitle(${sub.id})">
+                Delete
+              </button>
+            </div>
+          `).join('');
+        } else {
+          subtitlesList.innerHTML = '<p class="empty-state-message">No subtitles uploaded yet.</p>';
+        }
+      } catch (error) {
+        console.error('Failed to load subtitles:', error);
+      }
+    }
+
+    async function uploadSubtitle(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const language = prompt('Enter language code (e.g., en, es, fr):');
+      if (!language) return;
+
+      const label = prompt('Enter subtitle label (e.g., English, Spanish):');
+      if (!label) return;
+
+      const isDefault = confirm('Set as default subtitle?');
+
+      try {
+        const formData = new FormData();
+        formData.append('subtitle', file);
+        formData.append('language', language);
+        formData.append('label', label);
+        formData.append('isDefault', isDefault);
+
+        const response = await fetch(`/api/subtitles/upload/${movieId}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${getToken()}`
+          },
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showToast('Subtitle uploaded successfully!', 'success');
+          loadSubtitles();
+        } else {
+          throw new Error(data.message);
+        }
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+
+      // Reset input
+      event.target.value = '';
+    }
+
+    async function deleteSubtitle(subtitleId) {
+      if (!confirm('Are you sure you want to delete this subtitle?')) return;
+
+      try {
+        await fetchAPI(`/subtitles/${subtitleId}`, {
+          method: 'DELETE'
+        });
+        showToast('Subtitle deleted successfully!', 'success');
+        loadSubtitles();
       } catch (error) {
         showToast(error.message, 'error');
       }

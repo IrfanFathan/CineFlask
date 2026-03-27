@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Player - CineLocal</title>
+  
+  <!-- Preconnect to Google Fonts for faster loading -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- Load fonts with display=swap to avoid FOUT -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="/css/style.css">
   <style>
     body {
@@ -112,6 +120,7 @@
       font-size: var(--text-sm);
       color: white;
       min-width: 120px;
+      font-variant-numeric: tabular-nums;
     }
 
     .volume-control {
@@ -163,14 +172,98 @@
       justify-content: center;
       margin-top: var(--space-lg);
     }
+
+    /* Settings Menu */
+    .settings-menu {
+      position: absolute;
+      bottom: 80px;
+      right: var(--space-lg);
+      background: rgba(10, 10, 15, 0.98);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      min-width: 250px;
+      max-height: 400px;
+      overflow-y: auto;
+      z-index: 50;
+      display: none;
+    }
+
+    .settings-menu.active {
+      display: block;
+    }
+
+    .settings-menu-section {
+      padding: var(--space-md);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .settings-menu-section:last-child {
+      border-bottom: none;
+    }
+
+    .settings-menu-title {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .settings-option {
+      padding: var(--space-sm) var(--space-md);
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      font-size: var(--text-sm);
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .settings-option:hover {
+      background: rgba(124, 92, 252, 0.1);
+    }
+
+    .settings-option.active {
+      background: rgba(124, 92, 252, 0.2);
+      color: var(--accent);
+    }
+
+    .settings-option .checkmark {
+      display: none;
+      color: var(--accent);
+    }
+
+    .settings-option.active .checkmark {
+      display: block;
+    }
+
+    .subtitle-track {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      text-align: center;
+      padding: var(--space-md);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    video::cue {
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      font-size: 1.2em;
+      font-family: Arial, sans-serif;
+    }
   </style>
 </head>
 <body>
   <div class="player-container" id="player-container">
-    <video id="video-player" playsinline></video>
+    <video id="video-player" playsinline width="1920" height="1080"></video>
 
     <button class="btn btn-secondary back-button-player" id="back-btn" onclick="goBack()">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
         <path d="m15 18-6-6 6-6"></path>
       </svg>
       Back
@@ -195,11 +288,11 @@
       </div>
 
       <div class="controls-row">
-        <button class="play-pause-btn" id="play-pause-btn">
-          <svg id="play-icon" width="32" height="32" fill="currentColor" viewBox="0 0 24 24">
+        <button class="play-pause-btn" id="play-pause-btn" aria-label="Play/Pause">
+          <svg id="play-icon" width="32" height="32" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M8 5v14l11-7z"/>
           </svg>
-          <svg id="pause-icon" width="32" height="32" fill="currentColor" viewBox="0 0 24 24" style="display: none;">
+          <svg id="pause-icon" width="32" height="32" fill="currentColor" viewBox="0 0 24 24" style="display: none;" aria-hidden="true">
             <path d="M6 4h4v16H6zM14 4h4v16h-4z"/>
           </svg>
         </button>
@@ -207,7 +300,7 @@
         <div class="time-display" id="time-display">0:00 / 0:00</div>
 
         <div class="volume-control">
-          <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+          <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07M19.07 5.93a10 10 0 0 1 0 14.14"/>
           </svg>
           <div class="volume-slider" id="volume-slider">
@@ -215,11 +308,87 @@
           </div>
         </div>
 
-        <button class="play-pause-btn fullscreen-btn" id="fullscreen-btn">
-          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <button class="play-pause-btn" id="settings-btn" title="Settings" aria-label="Settings">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
+          </svg>
+        </button>
+
+        <button class="play-pause-btn fullscreen-btn" id="fullscreen-btn" aria-label="Fullscreen">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
           </svg>
         </button>
+      </div>
+    </div>
+
+    <!-- Settings Menu -->
+    <div class="settings-menu" id="settings-menu">
+      <!-- Playback Speed -->
+      <div class="settings-menu-section">
+        <div class="settings-menu-title">Playback Speed</div>
+        <div class="settings-option" data-speed="0.25">
+          0.25x
+          <span class="checkmark">✓</span>
+        </div>
+        <div class="settings-option" data-speed="0.5">
+          0.5x
+          <span class="checkmark">✓</span>
+        </div>
+        <div class="settings-option" data-speed="0.75">
+          0.75x
+          <span class="checkmark">✓</span>
+        </div>
+        <div class="settings-option active" data-speed="1">
+          Normal
+          <span class="checkmark">✓</span>
+        </div>
+        <div class="settings-option" data-speed="1.25">
+          1.25x
+          <span class="checkmark">✓</span>
+        </div>
+        <div class="settings-option" data-speed="1.5">
+          1.5x
+          <span class="checkmark">✓</span>
+        </div>
+        <div class="settings-option" data-speed="1.75">
+          1.75x
+          <span class="checkmark">✓</span>
+        </div>
+        <div class="settings-option" data-speed="2">
+          2x
+          <span class="checkmark">✓</span>
+        </div>
+      </div>
+
+      <!-- Subtitles -->
+      <div class="settings-menu-section">
+        <div class="settings-menu-title">Subtitles</div>
+        <div id="subtitle-options">
+          <div class="settings-option active" data-subtitle="off">
+            Off
+            <span class="checkmark">✓</span>
+          </div>
+          <!-- Subtitle tracks will be loaded dynamically -->
+        </div>
+      </div>
+
+      <!-- Audio Tracks -->
+      <div class="settings-menu-section" id="audio-section" style="display: none;">
+        <div class="settings-menu-title">Audio Track</div>
+        <div id="audio-options">
+          <!-- Audio tracks will be loaded dynamically -->
+        </div>
+      </div>
+
+      <!-- Quality (placeholder for future transcoding) -->
+      <div class="settings-menu-section" style="display: none;">
+        <div class="settings-menu-title">Quality</div>
+        <div class="settings-option active">
+          Auto
+          <span class="checkmark">✓</span>
+        </div>
       </div>
     </div>
   </div>
@@ -248,13 +417,93 @@
     const playerControls = document.getElementById('player-controls');
     const backBtn = document.getElementById('back-btn');
     const playerContainer = document.getElementById('player-container');
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsMenu = document.getElementById('settings-menu');
 
     let savedProgress = null;
     let controlsTimeout = null;
     let progressSaveInterval = null;
+    let subtitleTracks = [];
+    let currentSubtitleTrack = null;
 
     // Load video
     video.src = `/api/stream/${movieId}`;
+
+    // Load subtitles
+    async function loadSubtitles() {
+      try {
+        const data = await fetch(`/api/subtitles/${movieId}`).then(r => r.json());
+        if (data.success && data.subtitles.length > 0) {
+          subtitleTracks = data.subtitles;
+          const subtitleOptions = document.getElementById('subtitle-options');
+          
+          // Keep "Off" option
+          subtitleOptions.innerHTML = `
+            <div class="settings-option active" data-subtitle="off">
+              Off
+              <span class="checkmark">✓</span>
+            </div>
+          `;
+          
+          // Add subtitle tracks
+          data.subtitles.forEach((sub, index) => {
+            const option = document.createElement('div');
+            option.className = 'settings-option';
+            option.setAttribute('data-subtitle', index);
+            option.innerHTML = `
+              ${sub.label} (${sub.language})
+              ${sub.is_default ? '<span class="badge-label"> • Default</span>' : ''}
+              <span class="checkmark">✓</span>
+            `;
+            subtitleOptions.appendChild(option);
+            
+            // Create track element
+            const track = document.createElement('track');
+            track.kind = 'subtitles';
+            track.label = sub.label;
+            track.srclang = sub.language;
+            track.src = `/${sub.file_path}`;
+            if (sub.is_default) {
+              track.default = true;
+              option.classList.add('active');
+              subtitleOptions.querySelector('[data-subtitle="off"]').classList.remove('active');
+              currentSubtitleTrack = index;
+            }
+            video.appendChild(track);
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load subtitles:', error);
+      }
+    }
+
+    // Load audio tracks
+    function loadAudioTracks() {
+      video.addEventListener('loadedmetadata', () => {
+        if (video.audioTracks && video.audioTracks.length > 1) {
+          const audioSection = document.getElementById('audio-section');
+          const audioOptions = document.getElementById('audio-options');
+          audioSection.style.display = 'block';
+          
+          audioOptions.innerHTML = '';
+          for (let i = 0; i < video.audioTracks.length; i++) {
+            const track = video.audioTracks[i];
+            const option = document.createElement('div');
+            option.className = 'settings-option' + (track.enabled ? ' active' : '');
+            option.setAttribute('data-audio', i);
+            option.innerHTML = `
+              ${track.label || `Track ${i + 1}`} ${track.language ? `(${track.language})` : ''}
+              <span class="checkmark">✓</span>
+            `;
+            audioOptions.appendChild(option);
+          }
+        }
+      });
+    }
+
+    // Initialize
+    loadSubtitles();
+    loadAudioTracks();
 
     // Check for saved progress
     async function checkProgress() {
@@ -343,6 +592,76 @@
       }
     };
 
+    // Settings menu toggle
+    settingsBtn.onclick = (e) => {
+      e.stopPropagation();
+      settingsMenu.classList.toggle('active');
+    };
+
+    // Close settings when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!settingsMenu.contains(e.target) && e.target !== settingsBtn) {
+        settingsMenu.classList.remove('active');
+      }
+    });
+
+    // Playback speed controls
+    document.querySelectorAll('[data-speed]').forEach(option => {
+      option.onclick = () => {
+        const speed = parseFloat(option.getAttribute('data-speed'));
+        video.playbackRate = speed;
+        
+        // Update UI
+        document.querySelectorAll('[data-speed]').forEach(o => o.classList.remove('active'));
+        option.classList.add('active');
+      };
+    });
+
+    // Subtitle controls
+    document.addEventListener('click', (e) => {
+      const subtitleOption = e.target.closest('[data-subtitle]');
+      if (subtitleOption) {
+        const trackIndex = subtitleOption.getAttribute('data-subtitle');
+        
+        // Disable all tracks
+        for (let i = 0; i < video.textTracks.length; i++) {
+          video.textTracks[i].mode = 'disabled';
+        }
+        
+        // Enable selected track
+        if (trackIndex !== 'off') {
+          video.textTracks[parseInt(trackIndex)].mode = 'showing';
+          currentSubtitleTrack = parseInt(trackIndex);
+        } else {
+          currentSubtitleTrack = null;
+        }
+        
+        // Update UI
+        document.querySelectorAll('[data-subtitle]').forEach(o => o.classList.remove('active'));
+        subtitleOption.classList.add('active');
+      }
+    });
+
+    // Audio track controls
+    document.addEventListener('click', (e) => {
+      const audioOption = e.target.closest('[data-audio]');
+      if (audioOption && video.audioTracks) {
+        const trackIndex = parseInt(audioOption.getAttribute('data-audio'));
+        
+        // Disable all audio tracks
+        for (let i = 0; i < video.audioTracks.length; i++) {
+          video.audioTracks[i].enabled = false;
+        }
+        
+        // Enable selected track
+        video.audioTracks[trackIndex].enabled = true;
+        
+        // Update UI
+        document.querySelectorAll('[data-audio]').forEach(o => o.classList.remove('active'));
+        audioOption.classList.add('active');
+      }
+    });
+
     // Hide controls after 3 seconds of inactivity
     function resetControlsTimeout() {
       playerControls.classList.remove('hidden');
@@ -416,13 +735,62 @@
         case 'ArrowRight':
           video.currentTime = Math.min(video.duration, video.currentTime + 10);
           break;
+        case 'ArrowUp':
+          e.preventDefault();
+          video.volume = Math.min(1, video.volume + 0.1);
+          volumeSliderFill.style.width = (video.volume * 100) + '%';
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          video.volume = Math.max(0, video.volume - 0.1);
+          volumeSliderFill.style.width = (video.volume * 100) + '%';
+          break;
         case 'f':
+        case 'F':
           fullscreenBtn.click();
           break;
         case 'Escape':
           if (document.fullscreenElement) {
             document.exitFullscreen();
           }
+          settingsMenu.classList.remove('active');
+          break;
+        case 'm':
+        case 'M':
+          video.muted = !video.muted;
+          volumeSliderFill.style.width = video.muted ? '0%' : (video.volume * 100) + '%';
+          break;
+        case 's':
+        case 'S':
+          e.preventDefault();
+          settingsBtn.click();
+          break;
+        case 'c':
+        case 'C':
+          // Toggle subtitles
+          if (currentSubtitleTrack !== null) {
+            document.querySelector('[data-subtitle="off"]')?.click();
+          } else if (video.textTracks.length > 0) {
+            document.querySelector('[data-subtitle="0"]')?.click();
+          }
+          break;
+        case '<':
+        case ',':
+          // Decrease speed
+          const currentSpeed = video.playbackRate;
+          const newSpeed = Math.max(0.25, currentSpeed - 0.25);
+          video.playbackRate = newSpeed;
+          document.querySelector(`[data-speed="${newSpeed}"]`)?.classList.add('active');
+          document.querySelector(`[data-speed="${currentSpeed}"]`)?.classList.remove('active');
+          break;
+        case '>':
+        case '.':
+          // Increase speed
+          const currSpeed = video.playbackRate;
+          const incSpeed = Math.min(2, currSpeed + 0.25);
+          video.playbackRate = incSpeed;
+          document.querySelector(`[data-speed="${incSpeed}"]`)?.classList.add('active');
+          document.querySelector(`[data-speed="${currSpeed}"]`)?.classList.remove('active');
           break;
       }
     });

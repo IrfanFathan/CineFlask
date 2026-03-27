@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Home - CineLocal</title>
+  
+  <!-- Preconnect to Google Fonts for faster loading -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- Load fonts with display=swap to avoid FOUT -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -11,7 +19,7 @@
   <nav class="navbar" id="navbar">
     <div class="navbar-content">
       <a href="/home.html" class="navbar-logo">
-        <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24">
+        <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M8 5v14l11-7z"/>
         </svg>
         CineLocal
@@ -19,28 +27,28 @@
 
       <div class="navbar-actions">
         <div class="navbar-search">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="11" cy="11" r="8"></circle>
             <path d="m21 21-4.35-4.35"></path>
           </svg>
           <input 
             type="text" 
             id="search-input" 
-            placeholder="Search movies..." 
+            placeholder="Search movies…" 
             autocomplete="off"
           >
         </div>
 
         <a href="/upload.html" class="btn btn-primary">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"></path>
           </svg>
           Upload
         </a>
 
-        <div class="user-avatar" id="user-avatar" onclick="toggleUserMenu()">
+        <button class="user-avatar" id="user-avatar" onclick="toggleUserMenu()" aria-label="User menu">
           <!-- Profile initial -->
-        </div>
+        </button>
 
         <!-- User dropdown menu (hidden by default) -->
         <div id="user-menu" style="display: none; position: absolute; top: 60px; right: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-sm); z-index: 1001;">
@@ -55,22 +63,22 @@
 
   <!-- Hero Banner -->
   <section class="hero" id="hero-section" style="display: none;">
-    <img id="hero-bg" class="hero-background" alt="">
+    <img id="hero-bg" class="hero-background" alt="" width="1920" height="1080">
     <div class="hero-content">
-      <img id="hero-poster" class="hero-poster" alt="">
+      <img id="hero-poster" class="hero-poster" alt="" width="300" height="450">
       <div class="hero-info">
         <h1 class="hero-title" id="hero-title"></h1>
         <div class="hero-metadata" id="hero-metadata"></div>
         <p class="hero-description" id="hero-description"></p>
         <div class="hero-actions">
           <button class="btn btn-primary" id="hero-play-btn">
-            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M8 5v14l11-7z"/>
             </svg>
             Play
           </button>
           <button class="btn btn-secondary" id="hero-info-btn">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="12" cy="12" r="10"></circle>
               <path d="M12 16v-4M12 8h.01"></path>
             </svg>
@@ -220,7 +228,7 @@
     function renderMovies(movies) {
       const grid = document.getElementById('movies-grid');
       if (movies.length === 0) {
-        grid.innerHTML = '<p style="color: var(--text-secondary);">No movies yet. Upload some to get started!</p>';
+        grid.innerHTML = '<p class="empty-state-message">No movies yet. Upload some to get started!</p>';
         return;
       }
       grid.innerHTML = movies.map(movie => createMovieCard(movie)).join('');

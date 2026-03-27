@@ -92,6 +92,21 @@ try {
   `);
   console.log('✓ Watchlist table created');
 
+  // Subtitles table - stores subtitle files for movies
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS subtitles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      movie_id INTEGER NOT NULL,
+      language TEXT NOT NULL,
+      label TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      is_default INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE
+    )
+  `);
+  console.log('✓ Subtitles table created');
+
   // Create indexes for faster queries
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_movies_uploaded_by ON movies(uploaded_by);
@@ -100,6 +115,7 @@ try {
     CREATE INDEX IF NOT EXISTS idx_progress_last_watched ON playback_progress(last_watched);
     CREATE INDEX IF NOT EXISTS idx_watchlist_user_profile ON watchlist(user_id, profile_id);
     CREATE INDEX IF NOT EXISTS idx_profiles_user ON profiles(user_id);
+    CREATE INDEX IF NOT EXISTS idx_subtitles_movie ON subtitles(movie_id);
   `);
   console.log('✓ Database indexes created');
 

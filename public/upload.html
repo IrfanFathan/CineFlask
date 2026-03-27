@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Upload Movie - CineLocal</title>
+  
+  <!-- Preconnect to Google Fonts for faster loading -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- Load fonts with display=swap to avoid FOUT -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="/css/style.css">
   <style>
     .upload-container {
@@ -87,6 +95,7 @@
       font-size: var(--text-sm);
       color: var(--text-secondary);
       text-align: center;
+      font-variant-numeric: tabular-nums;
     }
 
     .status-message {
@@ -125,7 +134,7 @@
 
   <div class="upload-container">
     <button class="btn btn-secondary back-button-upload" onclick="window.location.href='/home.html'">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
         <path d="m15 18-6-6 6-6"></path>
       </svg>
       Back to Home
@@ -134,15 +143,15 @@
     <h1 style="margin-bottom: var(--space-lg);">Upload Movie</h1>
 
     <div class="upload-card">
-      <div class="upload-zone" id="upload-zone">
+      <label for="file-input" class="upload-zone" id="upload-zone">
         <div class="upload-zone-icon">
-          <svg width="64" height="64" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <svg width="64" height="64" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"></path>
           </svg>
         </div>
         <div class="upload-zone-text">Drop video file here or click to browse</div>
         <div class="upload-zone-subtext">Supported formats: MP4, MKV, AVI, MOV, WebM (up to 50GB)</div>
-      </div>
+      </label>
 
       <input type="file" id="file-input" accept="video/*,.mkv,.avi">
 
@@ -152,9 +161,9 @@
           type="text" 
           id="movie-title" 
           class="form-input" 
-          placeholder="Leave blank to auto-detect from filename"
+          placeholder="Leave blank to auto-detect from filename…"
         >
-        <small style="color: var(--text-muted); font-size: var(--text-xs); display: block; margin-top: var(--space-sm);">
+        <small class="form-hint">
           Used for OMDB metadata lookup. If blank, we'll extract from filename.
         </small>
       </div>
@@ -171,7 +180,7 @@
         <div class="progress-bar-container">
           <div class="progress-bar" id="progress-bar"></div>
         </div>
-        <div class="progress-text" id="progress-text">Preparing upload...</div>
+        <div class="progress-text" id="progress-text">Preparing upload…</div>
       </div>
 
       <div class="status-message" id="status-message"></div>
@@ -206,8 +215,7 @@
     let uploadId = null;
     let isUploading = false;
 
-    // Upload zone interactions
-    uploadZone.onclick = () => fileInput.click();
+    // Upload zone interactions (no need for onclick since label handles it)
 
     uploadZone.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -269,7 +277,7 @@
 
       try {
         // Step 1: Initialize upload
-        progressText.textContent = 'Initializing upload...';
+        progressText.textContent = 'Initializing upload…';
         const totalChunks = Math.ceil(selectedFile.size / CHUNK_SIZE);
 
         const initData = await fetchAPI('/upload/init', {
@@ -307,7 +315,7 @@
 
           const percent = ((i + 1) / totalChunks) * 100;
           progressBar.style.width = percent + '%';
-          progressText.textContent = `Uploading... ${Math.round(percent)}% (${i + 1}/${totalChunks} chunks)`;
+          progressText.textContent = `Uploading… ${Math.round(percent)}% (${i + 1}/${totalChunks} chunks)`;
         }
 
         if (!isUploading) {
@@ -317,7 +325,7 @@
         }
 
         // Step 3: Complete upload and fetch metadata
-        progressText.textContent = 'Processing and fetching metadata from OMDB...';
+        progressText.textContent = 'Processing and fetching metadata from OMDB…';
         progressBar.style.width = '100%';
 
         const completeData = await fetchAPI('/upload/complete', {
