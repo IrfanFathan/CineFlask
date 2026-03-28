@@ -59,7 +59,8 @@
         </button>
 
         <!-- User dropdown menu (hidden by default) -->
-        <div id="user-menu" style="display: none; position: absolute; top: 60px; right: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-sm); z-index: 1001;">
+        <div id="user-menu" style="display: none; position: absolute; top: 60px; right: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-sm); z-index: 1001; min-width: 150px;">
+          <button class="btn btn-secondary" style="width: 100%; margin-bottom: var(--space-sm);" onclick="window.location.href='/admin.html'" id="admin-menu-btn" style="display:none;">Admin Dashboard</button>
           <button class="btn btn-secondary" style="width: 100%; margin-bottom: var(--space-sm);" onclick="switchProfile()">Switch Profile</button>
           <button class="btn btn-secondary" style="width: 100%;" onclick="logout()">Logout</button>
         </div>
@@ -396,8 +397,26 @@
     sortOrderBtn.addEventListener('click', toggleSortOrder);
     clearFiltersBtn.addEventListener('click', clearFilters);
 
+    // Check if user is admin
+    function checkAdminStatus() {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.id === 1) { // Assuming user ID 1 is admin
+          const adminBtn = document.getElementById('admin-menu-btn');
+          if (adminBtn) {
+            adminBtn.style.display = 'block';
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing token', e);
+      }
+    }
+
     // Load all data
     async function loadData() {
+      checkAdminStatus();
       try {
         const query = buildFilterQuery();
 

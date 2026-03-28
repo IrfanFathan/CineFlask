@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Batch Upload - CineFlask</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-2xl);
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition-base);
+      margin-bottom: var(--space-lg);
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(124, 92, 252, 0.1);
+    }
+    #file-input { display: none; }
+    
+    .queue-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .queue-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .queue-info { flex: 1; margin-right: 20px; }
+    .queue-title { font-weight: bold; margin-bottom: 5px; }
+    .queue-meta { font-size: 12px; color: var(--text-muted); }
+    
+    .queue-progress-bar {
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      margin-top: 10px;
+      overflow: hidden;
+      display: none;
+    }
+    .queue-progress-fill {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.2s;
+    }
+    
+    .status-badge {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.1);
+    }
+    .status-badge.pending { background: #f39c12; color: #fff; }
+    .status-badge.uploading { background: var(--accent); color: #fff; }
+    .status-badge.done { background: #2ecc71; color: #fff; }
+    .status-badge.error { background: #e74c3c; color: #fff; }
+
+    .batch-controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-brand" onclick="window.location.href='/home.html'" style="cursor:pointer;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--accent)" style="margin-right: 10px;">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+      </svg>
+      CineFlask
+    </div>
+    <div class="nav-links">
+      <a href="/upload.html" class="nav-link">Single Upload</a>
+      <a href="/home.html" class="nav-link">Home</a>
+    </div>
+  </nav>
+
+  <main class="container" style="max-width: 800px; padding-top: 100px;">
+    <h1 style="margin-bottom: 20px;">Batch Movie Upload</h1>
+    <p style="color: var(--text-muted); margin-bottom: 30px;">
+      Select multiple files to upload. The system will automatically attempt to match the filename with IMDb to fetch metadata.
+    </p>
+
+    <label for="file-input" class="upload-zone" id="upload-zone">
+      <div style="font-size: 48px; color: var(--text-muted); margin-bottom: 10px;">📄</div>
+      <div style="font-size: 18px;">Drop video files here or click to browse</div>
+      <div style="font-size: 12px; color: var(--text-muted); margin-top: 10px;">Supported formats: MP4, MKV, AVI, MOV, WebM</div>
+    </label>
+    <input type="file" id="file-input" accept="video/*,.mkv,.avi" multiple>
+
+    <div class="batch-controls" id="batch-controls" style="display: none;">
+      <button class="btn btn-primary" id="start-btn">Start Uploading All</button>
+      <button class="btn btn-secondary" id="clear-btn">Clear Queue</button>
+    </div>
+
+    <div class="queue-list" id="queue-list">
+      <!-- Queue items will appear here -->
+    </div>
+  </main>
+
+  <script src="/js/utils.js"></script>
+  <script>
+    requireAuth();
+
+    const fileInput = document.getElementById('file-input');
+    const uploadZone = document.getElementById('upload-zone');
+    const queueList = document.getElementById('queue-list');
+    const batchControls = document.getElementById('batch-controls');
+    const startBtn = document.getElementById('start-btn');
+    const clearBtn = document.getElementById('clear-btn');
+
+    let uploadQueue = [];
+    let isUploading = false;
+    let currentUploadIndex = -1;
+    let currentXHR = null;
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+
+    // Handle Drag & Drop
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      uploadZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      uploadZone.addEventListener(eventName, () => uploadZone.classList.add('dragover'), false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      uploadZone.addEventListener(eventName, () => uploadZone.classList.remove('dragover'), false);
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      handleFiles(e.dataTransfer.files);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      handleFiles(e.target.files);
+    });
+
+    function handleFiles(files) {
+      if (isUploading) {
+        showToast('Cannot add files while uploading.', 'error');
+        return;
+      }
+
+      Array.from(files).forEach(file => {
+        // Clean title heuristic
+        let cleanTitle = file.name.replace(/\.[^/.]+$/, "")
+                                 .replace(/[._]/g, ' ')
+                                 .replace(/\[.*?\]/g, '')
+                                 .replace(/\b(1080p|720p|4K|BluRay|WEB-DL|x264|x265)\b/gi, '')
+                                 .trim();
+
+        uploadQueue.push({
+          id: Date.now() + Math.random(),
+          file: file,
+          cleanTitle: cleanTitle,
+          status: 'pending', // pending, uploading, done, error
+          progress: 0
+        });
+      });
+
+      renderQueue();
+    }
+
+    function renderQueue() {
+      queueList.innerHTML = '';
+      
+      if (uploadQueue.length > 0) {
+        batchControls.style.display = 'flex';
+      } else {
+        batchControls.style.display = 'none';
+      }
+
+      uploadQueue.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'queue-item';
+        div.innerHTML = `
+          <div class="queue-info">
+            <div class="queue-title">${item.cleanTitle}</div>
+            <div class="queue-meta">${formatFileSize(item.file.size)} • File: ${item.file.name}</div>
+            <div class="queue-progress-bar" id="pb-${item.id}" style="display: ${item.status === 'uploading' ? 'block' : 'none'}">
+              <div class="queue-progress-fill" id="pf-${item.id}" style="width: ${item.progress}%"></div>
+            </div>
+          </div>
+          <div>
+            <span class="status-badge ${item.status}" id="status-${item.id}">${item.status.toUpperCase()}</span>
+            ${item.status === 'pending' && !isUploading ? `<button class="btn btn-secondary" style="margin-left:10px; padding: 4px 8px; font-size:12px;" onclick="removeItem(${index})">X</button>` : ''}
+          </div>
+        `;
+        queueList.appendChild(div);
+      });
+    }
+
+    window.removeItem = (index) => {
+      uploadQueue.splice(index, 1);
+      renderQueue();
+    }
+
+    clearBtn.addEventListener('click', () => {
+      if (isUploading) return;
+      uploadQueue = [];
+      fileInput.value = '';
+      renderQueue();
+    });
+
+    startBtn.addEventListener('click', async () => {
+      if (isUploading || uploadQueue.length === 0) return;
+      isUploading = true;
+      startBtn.disabled = true;
+      clearBtn.disabled = true;
+      
+      for (let i = 0; i < uploadQueue.length; i++) {
+        if (uploadQueue[i].status === 'pending') {
+          currentUploadIndex = i;
+          await uploadFile(uploadQueue[i]);
+        }
+      }
+
+      isUploading = false;
+      startBtn.disabled = false;
+      clearBtn.disabled = false;
+      showToast('Batch upload process completed!');
+      renderQueue();
+    });
+
+    async function uploadFile(queueItem) {
+      return new Promise(async (resolve) => {
+        try {
+          queueItem.status = 'uploading';
+          renderQueue();
+
+          const token = localStorage.getItem('token');
+          const file = queueItem.file;
+          const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+          
+          // Generate unique file ID
+          const fileId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+          // 1. Initiate upload
+          const initRes = await fetch('/api/upload/initiate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              filename: file.name,
+              totalSize: file.size,
+              totalChunks,
+              fileId
+            })
+          });
+
+          const initData = await initRes.json();
+          if (!initData.success) throw new Error(initData.error || 'Failed to initiate upload');
+
+          const uploadId = initData.uploadId;
+
+          // 2. Upload chunks
+          for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+            const start = chunkIndex * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const chunk = file.slice(start, end);
+            
+            await uploadChunkWithRetry(chunk, uploadId, chunkIndex, totalChunks, token, queueItem);
+            
+            queueItem.progress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
+            updateItemProgress(queueItem);
+          }
+
+          // 3. Complete upload
+          updateItemStatus(queueItem, 'Finalizing...', 'uploading');
+          
+          const completeRes = await fetch('/api/upload/complete', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              uploadId,
+              title: queueItem.cleanTitle
+            })
+          });
+
+          const completeData = await completeRes.json();
+          if (!completeData.success) throw new Error(completeData.error || 'Failed to complete upload');
+
+          queueItem.status = 'done';
+          renderQueue();
+          resolve();
+
+        } catch (error) {
+          console.error('Upload failed for ' + queueItem.cleanTitle, error);
+          queueItem.status = 'error';
+          renderQueue();
+          resolve(); // Resolve anyway to move to next file
+        }
+      });
+    }
+
+    async function uploadChunkWithRetry(chunk, uploadId, chunkIndex, totalChunks, token, queueItem, retries = 3) {
+      try {
+        const formData = new FormData();
+        formData.append('chunk', chunk);
+        formData.append('uploadId', uploadId);
+        formData.append('chunkIndex', chunkIndex);
+        formData.append('totalChunks', totalChunks);
+
+        return new Promise((resolve, reject) => {
+          currentXHR = new XMLHttpRequest();
+          currentXHR.open('POST', '/api/upload/chunk');
+          currentXHR.setRequestHeader('Authorization', `Bearer ${token}`);
+          
+          currentXHR.onload = () => {
+            if (currentXHR.status >= 200 && currentXHR.status < 300) {
+              const res = JSON.parse(currentXHR.responseText);
+              if (res.success) resolve();
+              else reject(new Error(res.error));
+            } else {
+              reject(new Error(`Server error: ${currentXHR.status}`));
+            }
+          };
+          
+          currentXHR.onerror = () => reject(new Error('Network error'));
+          currentXHR.send(formData);
+        });
+      } catch (error) {
+        if (retries > 0) {
+          console.log(`Retrying chunk ${chunkIndex} for ${queueItem.cleanTitle}... (${retries} left)`);
+          await new Promise(r => setTimeout(r, 1000));
+          return uploadChunkWithRetry(chunk, uploadId, chunkIndex, totalChunks, token, queueItem, retries - 1);
+        }
+        throw error;
+      }
+    }
+
+    function updateItemProgress(item) {
+      const pb = document.getElementById(`pb-${item.id}`);
+      const pf = document.getElementById(`pf-${item.id}`);
+      const stat = document.getElementById(`status-${item.id}`);
+      if (pb) pb.style.display = 'block';
+      if (pf) pf.style.width = `${item.progress}%`;
+      if (stat) stat.innerText = `${item.progress}%`;
+    }
+
+    function updateItemStatus(item, text, className) {
+      const stat = document.getElementById(`status-${item.id}`);
+      if (stat) {
+        stat.innerText = text;
+        stat.className = `status-badge ${className}`;
+      }
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+  </script>
+</body>
+</html>
