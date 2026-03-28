@@ -13,6 +13,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="/css/style.css">
+  
+  <script>
+    // Only auto-redirect if they came from the root URL and already have a profile selected
+    if (document.referrer.endsWith('/') && sessionStorage.getItem('cinelocal_profile')) {
+      window.location.replace('/home.html');
+    }
+  </script>
   <style>
     .profiles-container {
       min-height: 100vh;

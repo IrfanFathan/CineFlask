@@ -13,6 +13,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="/css/style.css">
+
+  <script>
+    // Execute immediately before body renders to prevent UI flash
+    if (localStorage.getItem('cinelocal_token')) {
+      // If they already have a profile selected in this session, go straight to home
+      if (sessionStorage.getItem('cinelocal_profile')) {
+        window.location.replace('/home.html');
+      } else {
+        window.location.replace('/profiles.html');
+      }
+    }
+  </script>
 </head>
 <body>
   <div class="auth-container">
@@ -125,11 +137,6 @@
 
   <script src="/js/utils.js"></script>
   <script>
-    // Check if already logged in
-    if (isAuthenticated()) {
-      window.location.href = '/profiles.html';
-    }
-
     // Switch between login and register tabs
     function switchTab(tab) {
       const loginTab = document.getElementById('tab-login');
