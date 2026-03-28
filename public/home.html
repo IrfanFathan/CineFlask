@@ -34,16 +34,24 @@
           <input 
             type="text" 
             id="search-input" 
-            placeholder="Search movies…" 
+            placeholder="Search movies & series…" 
             autocomplete="off"
           >
         </div>
 
-        <a href="/upload.html" class="btn btn-primary">
+        <a href="/upload.html" class="btn btn-primary" style="margin-right: 8px;">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"></path>
           </svg>
-          Upload
+          Upload Movie
+        </a>
+
+        <a href="/upload-series.html" class="btn btn-primary">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+            <polyline points="17 2 12 7 7 2"></polyline>
+          </svg>
+          Upload Series
         </a>
 
         <button class="user-avatar" id="user-avatar" onclick="toggleUserMenu()" aria-label="User menu">
@@ -60,6 +68,93 @@
   </nav>
 
   <div class="navbar-spacer"></div>
+
+  <!-- Filters Bar -->
+  <div class="filters-bar" id="filters-bar" style="background: var(--bg-card); border-bottom: 1px solid var(--border); padding: var(--space-md) var(--space-2xl); position: sticky; top: 60px; z-index: 100; display: none;">
+    <div style="max-width: 1400px; margin: 0 auto;">
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-md);">
+        
+        <!-- Filters -->
+        <div style="display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; flex: 1;">
+          <!-- Genre Filter -->
+          <select id="filter-genre" class="form-input" style="width: auto; min-width: 150px;">
+            <option value="">All Genres</option>
+            <option value="Action">Action</option>
+            <option value="Comedy">Comedy</option>
+            <option value="Drama">Drama</option>
+            <option value="Horror">Horror</option>
+            <option value="Sci-Fi">Sci-Fi</option>
+            <option value="Thriller">Thriller</option>
+            <option value="Romance">Romance</option>
+            <option value="Adventure">Adventure</option>
+            <option value="Animation">Animation</option>
+            <option value="Crime">Crime</option>
+            <option value="Fantasy">Fantasy</option>
+            <option value="Mystery">Mystery</option>
+          </select>
+
+          <!-- Year Range -->
+          <div style="display: flex; align-items: center; gap: var(--space-sm);">
+            <input type="number" id="filter-year-min" class="form-input" placeholder="Year from" style="width: 100px;" min="1900" max="2030">
+            <span style="color: var(--text-muted);">-</span>
+            <input type="number" id="filter-year-max" class="form-input" placeholder="Year to" style="width: 100px;" min="1900" max="2030">
+          </div>
+
+          <!-- Rating Filter -->
+          <div style="display: flex; align-items: center; gap: var(--space-sm);">
+            <label style="color: var(--text-secondary); font-size: var(--text-sm); white-space: nowrap;">Min Rating:</label>
+            <input type="number" id="filter-rating" class="form-input" placeholder="0.0" style="width: 80px;" min="0" max="10" step="0.1">
+          </div>
+
+          <!-- Language Filter -->
+          <select id="filter-language" class="form-input" style="width: auto; min-width: 120px;">
+            <option value="">All Languages</option>
+            <option value="English">English</option>
+            <option value="Spanish">Spanish</option>
+            <option value="French">French</option>
+            <option value="German">German</option>
+            <option value="Japanese">Japanese</option>
+            <option value="Korean">Korean</option>
+            <option value="Hindi">Hindi</option>
+            <option value="Italian">Italian</option>
+          </select>
+
+          <!-- Clear Filters Button -->
+          <button class="btn btn-secondary" id="clear-filters-btn" style="white-space: nowrap;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+            Clear
+          </button>
+        </div>
+
+        <!-- Sort -->
+        <div style="display: flex; align-items: center; gap: var(--space-sm);">
+          <label style="color: var(--text-secondary); font-size: var(--text-sm); white-space: nowrap;">Sort By:</label>
+          <select id="sort-by" class="form-input" style="width: auto; min-width: 140px;">
+            <option value="created_at">Date Added</option>
+            <option value="title">Title</option>
+            <option value="year">Year</option>
+            <option value="imdb_rating">Rating</option>
+          </select>
+          <button class="btn btn-secondary" id="sort-order-btn" title="Toggle sort direction" style="padding: 8px 12px;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" id="sort-icon">
+              <path d="m7 16 5 5 5-5M7 8l5-5 5 5"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Filters Display -->
+      <div id="active-filters" style="margin-top: var(--space-sm); display: none;">
+        <div style="display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap;">
+          <span style="font-size: var(--text-sm); color: var(--text-muted);">Active filters:</span>
+          <div id="filter-tags" style="display: flex; gap: var(--space-sm); flex-wrap: wrap;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Hero Banner -->
   <section class="hero" id="hero-section" style="display: none;">
@@ -113,6 +208,14 @@
       </div>
       <div class="movie-grid" id="movies-grid"></div>
     </section>
+
+    <!-- TV Series -->
+    <section class="section" id="series-section">
+      <div class="section-header">
+        <h2 class="section-title">TV Series</h2>
+      </div>
+      <div class="movie-grid" id="series-grid"></div>
+    </section>
   </div>
 
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -130,26 +233,200 @@
     document.getElementById('user-avatar').style.background = profile.avatar_color;
 
     let allMovies = [];
+    let allSeries = [];
     let continueWatchingMovies = [];
+    let continueWatchingSeries = [];
     let watchlistMovies = [];
+    let watchlistSeries = [];
     let heroMovieIndex = 0;
+
+    // Filter state
+    let currentFilters = {
+      genre: '',
+      year_min: '',
+      year_max: '',
+      rating_min: '',
+      language: '',
+      sort_by: 'created_at',
+      sort_order: 'DESC'
+    };
+
+    // Get filter elements
+    const filterGenre = document.getElementById('filter-genre');
+    const filterYearMin = document.getElementById('filter-year-min');
+    const filterYearMax = document.getElementById('filter-year-max');
+    const filterRating = document.getElementById('filter-rating');
+    const filterLanguage = document.getElementById('filter-language');
+    const sortBy = document.getElementById('sort-by');
+    const sortOrderBtn = document.getElementById('sort-order-btn');
+    const clearFiltersBtn = document.getElementById('clear-filters-btn');
+    const filtersBar = document.getElementById('filters-bar');
+    const activeFiltersDiv = document.getElementById('active-filters');
+    const filterTagsDiv = document.getElementById('filter-tags');
+
+    // Show filters bar when there's content
+    function showFiltersBar() {
+      if (allMovies.length > 0 || allSeries.length > 0) {
+        filtersBar.style.display = 'block';
+      }
+    }
+
+    // Build query string from filters
+    function buildFilterQuery() {
+      const params = new URLSearchParams();
+      params.append('profile_id', profile.id);
+      
+      if (currentFilters.genre) params.append('genre', currentFilters.genre);
+      if (currentFilters.year_min) params.append('year_min', currentFilters.year_min);
+      if (currentFilters.year_max) params.append('year_max', currentFilters.year_max);
+      if (currentFilters.rating_min) params.append('rating_min', currentFilters.rating_min);
+      if (currentFilters.language) params.append('language', currentFilters.language);
+      if (currentFilters.sort_by) params.append('sort_by', currentFilters.sort_by);
+      if (currentFilters.sort_order) params.append('sort_order', currentFilters.sort_order);
+
+      return params.toString();
+    }
+
+    // Apply filters
+    async function applyFilters() {
+      try {
+        showLoading();
+        
+        // Update filter state
+        currentFilters.genre = filterGenre.value;
+        currentFilters.year_min = filterYearMin.value;
+        currentFilters.year_max = filterYearMax.value;
+        currentFilters.rating_min = filterRating.value;
+        currentFilters.language = filterLanguage.value;
+        currentFilters.sort_by = sortBy.value;
+
+        const query = buildFilterQuery();
+
+        // Fetch filtered movies
+        const moviesData = await fetchAPI(`/movies?${query}`);
+        allMovies = moviesData.movies;
+
+        // Fetch filtered series
+        const seriesData = await fetchAPI(`/series?${query}`);
+        allSeries = seriesData.series || [];
+
+        // Re-render movies and series
+        renderMovies();
+        renderSeries();
+        
+        // Update active filters display
+        updateActiveFilters();
+
+        hideLoading();
+      } catch (error) {
+        hideLoading();
+        showToast(error.message, 'error');
+      }
+    }
+
+    // Update active filters display
+    function updateActiveFilters() {
+      filterTagsDiv.innerHTML = '';
+      let hasFilters = false;
+
+      if (currentFilters.genre) {
+        addFilterTag('Genre', currentFilters.genre);
+        hasFilters = true;
+      }
+      if (currentFilters.year_min || currentFilters.year_max) {
+        const yearRange = `${currentFilters.year_min || '?'} - ${currentFilters.year_max || '?'}`;
+        addFilterTag('Year', yearRange);
+        hasFilters = true;
+      }
+      if (currentFilters.rating_min) {
+        addFilterTag('Rating', `≥ ${currentFilters.rating_min}`);
+        hasFilters = true;
+      }
+      if (currentFilters.language) {
+        addFilterTag('Language', currentFilters.language);
+        hasFilters = true;
+      }
+
+      activeFiltersDiv.style.display = hasFilters ? 'block' : 'none';
+    }
+
+    function addFilterTag(label, value) {
+      const tag = document.createElement('div');
+      tag.style.cssText = 'display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: var(--accent); color: white; border-radius: 4px; font-size: var(--text-xs);';
+      tag.innerHTML = `<span>${label}: ${value}</span>`;
+      filterTagsDiv.appendChild(tag);
+    }
+
+    // Clear all filters
+    function clearFilters() {
+      filterGenre.value = '';
+      filterYearMin.value = '';
+      filterYearMax.value = '';
+      filterRating.value = '';
+      filterLanguage.value = '';
+      sortBy.value = 'created_at';
+      currentFilters.sort_order = 'DESC';
+      updateSortIcon();
+      applyFilters();
+    }
+
+    // Toggle sort order
+    function toggleSortOrder() {
+      currentFilters.sort_order = currentFilters.sort_order === 'DESC' ? 'ASC' : 'DESC';
+      updateSortIcon();
+      applyFilters();
+    }
+
+    function updateSortIcon() {
+      const sortIcon = document.getElementById('sort-icon');
+      if (currentFilters.sort_order === 'ASC') {
+        sortIcon.innerHTML = '<path d="m7 15 5 5 5-5M7 9l5-5 5 5"></path><line x1="12" y1="19" x2="12" y2="4"></line>';
+      } else {
+        sortIcon.innerHTML = '<path d="m7 16 5 5 5-5M7 8l5-5 5 5"></path>';
+      }
+    }
+
+    // Attach filter event listeners
+    filterGenre.addEventListener('change', applyFilters);
+    filterYearMin.addEventListener('change', debounce(applyFilters, 500));
+    filterYearMax.addEventListener('change', debounce(applyFilters, 500));
+    filterRating.addEventListener('change', debounce(applyFilters, 500));
+    filterLanguage.addEventListener('change', applyFilters);
+    sortBy.addEventListener('change', applyFilters);
+    sortOrderBtn.addEventListener('click', toggleSortOrder);
+    clearFiltersBtn.addEventListener('click', clearFilters);
 
     // Load all data
     async function loadData() {
       try {
+        const query = buildFilterQuery();
+
         // Fetch all movies
-        const moviesData = await fetchAPI(`/movies?profile_id=${profile.id}`);
+        const moviesData = await fetchAPI(`/movies?${query}`);
         allMovies = moviesData.movies;
 
-        // Fetch continue watching
+        // Fetch all series
+        const seriesData = await fetchAPI(`/series?${query}`);
+        allSeries = seriesData.series || [];
+
+        // Fetch continue watching movies
         const progressData = await fetchAPI(`/progress?profile_id=${profile.id}`);
         continueWatchingMovies = progressData.movies;
 
-        // Fetch watchlist
+        // Fetch continue watching series (in-progress episodes)
+        const seriesProgressData = await fetchAPI(`/progress/episode/in-progress?profile_id=${profile.id}`);
+        continueWatchingSeries = seriesProgressData.series || [];
+
+        // Fetch watchlist movies
         const watchlistData = await fetchAPI(`/watchlist?profile_id=${profile.id}`);
         watchlistMovies = watchlistData.movies;
 
+        // Fetch watchlist series
+        const seriesWatchlistData = await fetchAPI(`/watchlist/series?profile_id=${profile.id}`);
+        watchlistSeries = seriesWatchlistData.series || [];
+
         renderAll();
+        showFiltersBar(); // Show filters after data loads
       } catch (error) {
         showToast(error.message, 'error');
       }
@@ -159,7 +436,8 @@
       renderHero();
       renderContinueWatching();
       renderWatchlist();
-      renderMovies(allMovies);
+      renderMovies();
+      renderSeries();
     }
 
     function renderHero() {
@@ -200,38 +478,76 @@
     }
 
     function renderContinueWatching() {
-      if (continueWatchingMovies.length === 0) {
+      // Merge movies and series in-progress
+      const allContinueWatching = [
+        ...continueWatchingMovies.map(m => ({ ...m, type: 'movie' })),
+        ...continueWatchingSeries.map(s => ({ ...s, type: 'series' }))
+      ];
+
+      if (allContinueWatching.length === 0) {
         document.getElementById('continue-watching-section').style.display = 'none';
         return;
       }
 
       document.getElementById('continue-watching-section').style.display = 'block';
       const row = document.getElementById('continue-watching-row');
-      row.innerHTML = continueWatchingMovies.map(item => 
-        createMovieCard(item, item.progress_percentage)
-      ).join('');
+      row.innerHTML = allContinueWatching.map(item => {
+        if (item.type === 'movie') {
+          return createMovieCard(item, item.progress_percentage);
+        } else {
+          // Series card with episode info
+          return createSeriesCard(item, {
+            episode_number: item.episode_number,
+            season_number: item.season_number,
+            progress_percentage: item.progress_percentage
+          });
+        }
+      }).join('');
     }
 
     function renderWatchlist() {
-      if (watchlistMovies.length === 0) {
+      // Merge movies and series watchlists
+      const allWatchlist = [
+        ...watchlistMovies.map(m => ({ ...m, type: 'movie' })),
+        ...watchlistSeries.map(s => ({ ...s, type: 'series' }))
+      ];
+
+      if (allWatchlist.length === 0) {
         document.getElementById('watchlist-section').style.display = 'none';
         return;
       }
 
       document.getElementById('watchlist-section').style.display = 'block';
       const row = document.getElementById('watchlist-row');
-      row.innerHTML = watchlistMovies.map(movie => 
-        createMovieCard(movie)
-      ).join('');
+      row.innerHTML = allWatchlist.map(item => {
+        if (item.type === 'movie') {
+          return createMovieCard(item);
+        } else {
+          return createSeriesCard(item);
+        }
+      }).join('');
     }
 
-    function renderMovies(movies) {
+    function renderMovies() {
       const grid = document.getElementById('movies-grid');
-      if (movies.length === 0) {
-        grid.innerHTML = '<p class="empty-state-message">No movies yet. Upload some to get started!</p>';
+      if (allMovies.length === 0) {
+        grid.innerHTML = '<p class="empty-state-message">No movies found. Try adjusting your filters.</p>';
         return;
       }
-      grid.innerHTML = movies.map(movie => createMovieCard(movie)).join('');
+      grid.innerHTML = allMovies.map(movie => createMovieCard(movie)).join('');
+    }
+
+    function renderSeries() {
+      const grid = document.getElementById('series-grid');
+      const section = document.getElementById('series-section');
+      
+      if (allSeries.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+      
+      section.style.display = 'block';
+      grid.innerHTML = allSeries.map(s => createSeriesCard(s)).join('');
     }
 
     // Search functionality
@@ -240,14 +556,32 @@
       const query = e.target.value.trim();
       
       if (!query) {
-        renderMovies(allMovies);
+        // Reapply current filters
+        applyFilters();
         return;
       }
 
       try {
-        const data = await fetchAPI(`/movies?q=${encodeURIComponent(query)}&profile_id=${profile.id}`);
-        renderMovies(data.movies);
+        showLoading();
+        
+        // Build query with filters and search term
+        const filterQuery = buildFilterQuery();
+        const searchQuery = `q=${encodeURIComponent(query)}&${filterQuery}`;
+
+        // Search movies
+        const moviesData = await fetchAPI(`/movies?${searchQuery}`);
+        allMovies = moviesData.movies;
+
+        // Search series
+        const seriesData = await fetchAPI(`/series?${searchQuery}`);
+        allSeries = seriesData.series || [];
+
+        renderMovies();
+        renderSeries();
+        
+        hideLoading();
       } catch (error) {
+        hideLoading();
         showToast(error.message, 'error');
       }
     }, 300));

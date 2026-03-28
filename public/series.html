@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Series - CineLocal</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .series-hero {
+      position: relative;
+      width: 100%;
+      height: 70vh;
+      min-height: 500px;
+      margin-bottom: var(--space-2xl);
+      overflow: hidden;
+    }
+
+    .series-hero-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .series-hero-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to top, var(--bg-base) 0%, rgba(13, 13, 16, 0.7) 50%, rgba(13, 13, 16, 0.4) 100%);
+    }
+
+    .series-hero-content {
+      position: relative;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: var(--space-2xl) var(--space-lg);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .series-hero-title {
+      font-size: 4rem;
+      font-weight: 800;
+      margin-bottom: var(--space-md);
+      text-shadow: 0 2px 20px rgba(0, 0, 0, 0.8);
+    }
+
+    .series-hero-meta {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      margin-bottom: var(--space-lg);
+      flex-wrap: wrap;
+    }
+
+    .series-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 4px;
+      font-size: var(--text-sm);
+      font-weight: 600;
+      backdrop-filter: blur(10px);
+    }
+
+    .series-badge.status-continuing {
+      background: rgba(34, 197, 94, 0.2);
+      color: var(--success);
+    }
+
+    .series-badge.status-ended {
+      background: rgba(156, 163, 175, 0.2);
+      color: var(--text-secondary);
+    }
+
+    .series-rating-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--rating-star);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .series-hero-description {
+      max-width: 65ch;
+      line-height: var(--leading-relaxed);
+      margin-bottom: var(--space-lg);
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+    }
+
+    .series-hero-description.clamped {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .expand-toggle {
+      background: none;
+      border: none;
+      color: var(--accent);
+      cursor: pointer;
+      font-size: var(--text-sm);
+      margin-top: var(--space-sm);
+    }
+
+    .series-hero-actions {
+      display: flex;
+      gap: var(--space-md);
+    }
+
+    .seasons-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--space-lg) var(--space-2xl);
+    }
+
+    .season-accordion {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: var(--space-md);
+      overflow: hidden;
+    }
+
+    .season-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-lg);
+      cursor: pointer;
+      transition: background var(--transition-base);
+    }
+
+    .season-header:hover {
+      background: var(--bg-elevated);
+    }
+
+    .season-header-info h3 {
+      margin-bottom: 4px;
+    }
+
+    .season-header-meta {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+    }
+
+    .season-toggle {
+      transition: transform var(--transition-base);
+    }
+
+    .season-accordion.open .season-toggle {
+      transform: rotate(180deg);
+    }
+
+    .season-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .season-accordion.open .season-content {
+      max-height: 5000px;
+    }
+
+    .episode-list {
+      padding: 0 var(--space-lg) var(--space-lg);
+    }
+
+    .episode-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md);
+      background: var(--bg-elevated);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-sm);
+      cursor: pointer;
+      transition: all var(--transition-base);
+    }
+
+    .episode-item:hover {
+      background: var(--bg-hover);
+      transform: translateX(4px);
+    }
+
+    .episode-number {
+      font-size: var(--text-lg);
+      font-weight: 700;
+      color: var(--text-secondary);
+      min-width: 40px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .episode-thumbnail {
+      width: 120px;
+      height: 68px;
+      background: var(--bg-card);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .episode-progress-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .episode-progress-fill {
+      height: 100%;
+      background: var(--accent);
+    }
+
+    .episode-info {
+      flex: 1;
+    }
+
+    .episode-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .episode-meta {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .episode-rating {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--rating-star);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .episode-play-btn {
+      width: 48px;
+      height: 48px;
+      background: var(--accent);
+      border: none;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition-base);
+      color: white;
+    }
+
+    .episode-play-btn:hover {
+      transform: scale(1.1);
+    }
+
+    .back-button {
+      position: absolute;
+      top: var(--space-lg);
+      left: var(--space-lg);
+      z-index: 10;
+    }
+
+    @media (max-width: 768px) {
+      .series-hero-title {
+        font-size: 2.5rem;
+      }
+
+      .episode-item {
+        flex-wrap: wrap;
+      }
+
+      .episode-thumbnail {
+        width: 100px;
+        height: 56px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Hero Section -->
+  <section class="series-hero" id="series-hero">
+    <img id="hero-bg" class="series-hero-bg" alt="">
+    <div class="series-hero-overlay"></div>
+    <a href="/home.html" class="btn btn-secondary back-button">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      Back
+    </a>
+    <div class="series-hero-content">
+      <h1 class="series-hero-title" id="series-title"></h1>
+      <div class="series-hero-meta" id="series-meta"></div>
+      <p class="series-hero-description clamped" id="series-description"></p>
+      <button class="expand-toggle" id="expand-btn" onclick="toggleDescription()" style="display: none;">
+        Show more
+      </button>
+      <div class="series-hero-actions">
+        <button class="btn btn-primary" id="play-btn" onclick="playFirstUnwatched()">
+          <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          Play
+        </button>
+        <button class="btn btn-secondary" id="watchlist-btn" onclick="toggleWatchlist()">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          My List
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Seasons -->
+  <div class="seasons-container" id="seasons-container"></div>
+
+  <script src="/js/utils.js"></script>
+  <script>
+    requireAuth();
+
+    const profile = getProfile();
+    if (!profile) {
+      window.location.href = '/profiles.html';
+    }
+
+    const seriesId = getURLParam('id');
+    let seriesData = null;
+    let inWatchlist = false;
+
+    async function loadSeries() {
+      try {
+        showLoading();
+        const data = await fetchAPI(`/series/${seriesId}?profile_id=${profile.id}`);
+        seriesData = data.series;
+        inWatchlist = seriesData.in_watchlist === 1;
+
+        renderSeries();
+        hideLoading();
+      } catch (error) {
+        hideLoading();
+        alert('Error loading series: ' + error.message);
+        window.location.href = '/home.html';
+      }
+    }
+
+    function renderSeries() {
+      // Hero section
+      document.getElementById('hero-bg').src = seriesData.backdrop_url || seriesData.poster_url || '';
+      document.getElementById('series-title').textContent = seriesData.title;
+      document.getElementById('series-description').textContent = seriesData.description || 'No description available.';
+
+      // Check if description needs expand button
+      const descEl = document.getElementById('series-description');
+      if (descEl.scrollHeight > descEl.clientHeight) {
+        document.getElementById('expand-btn').style.display = 'block';
+      }
+
+      // Meta information
+      const metaHTML = [];
+      
+      // Year range
+      if (seriesData.year) {
+        const yearRange = formatSeriesYearRange(seriesData.year, seriesData.end_year, seriesData.status);
+        metaHTML.push(`<span>${yearRange}</span>`);
+      }
+
+      // Status badge
+      if (seriesData.status) {
+        const statusClass = seriesData.status === 'Continuing' ? 'status-continuing' : 'status-ended';
+        metaHTML.push(`<span class="series-badge ${statusClass}">${seriesData.status}</span>`);
+      }
+
+      // Genres
+      if (seriesData.genre) {
+        const genres = seriesData.genre.split(',').map(g => 
+          `<span class="series-badge">${g.trim()}</span>`
+        ).join('');
+        metaHTML.push(genres);
+      }
+
+      // Rating
+      if (seriesData.imdb_rating) {
+        metaHTML.push(`
+          <span class="series-rating-badge">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+            ${seriesData.imdb_rating}
+          </span>
+        `);
+      }
+
+      // Creator
+      if (seriesData.creator) {
+        metaHTML.push(`<span>Created by ${seriesData.creator}</span>`);
+      }
+
+      document.getElementById('series-meta').innerHTML = metaHTML.join(' · ');
+
+      // Watchlist button
+      updateWatchlistButton();
+
+      // Render seasons
+      renderSeasons();
+    }
+
+    function renderSeasons() {
+      const container = document.getElementById('seasons-container');
+      
+      if (!seriesData.seasons || seriesData.seasons.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No seasons available yet.</p>';
+        return;
+      }
+
+      let html = '';
+      seriesData.seasons.forEach((season, index) => {
+        const isOpen = index === seriesData.seasons.length - 1; // Open most recent season
+        html += `
+          <div class="season-accordion ${isOpen ? 'open' : ''}" id="season-${season.id}">
+            <div class="season-header" onclick="toggleSeason(${season.id})">
+              <div class="season-header-info">
+                <h3>${season.title}</h3>
+                <div class="season-header-meta">
+                  ${season.episodes.length} Episodes
+                  ${season.year ? ` · ${season.year}` : ''}
+                </div>
+              </div>
+              <svg class="season-toggle" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </div>
+            <div class="season-content">
+              <div class="episode-list">
+                ${renderEpisodes(season.episodes)}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function renderEpisodes(episodes) {
+      if (episodes.length === 0) {
+        return '<p style="text-align: center; color: var(--text-secondary); padding: var(--space-lg);">No episodes uploaded yet.</p>';
+      }
+
+      return episodes.map(ep => `
+        <div class="episode-item" onclick="playEpisode(${ep.id})">
+          <div class="episode-number">${ep.episode_number}</div>
+          <div class="episode-thumbnail">
+            <svg width="32" height="32" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+            ${ep.progress_percentage > 0 ? `
+              <div class="episode-progress-bar">
+                <div class="episode-progress-fill" style="width: ${ep.progress_percentage}%"></div>
+              </div>
+            ` : ''}
+          </div>
+          <div class="episode-info">
+            <div class="episode-title">${ep.title || 'Episode ' + ep.episode_number}</div>
+            <div class="episode-meta">
+              ${ep.runtime ? `<span>${ep.runtime}</span>` : ''}
+              ${ep.imdb_rating ? `
+                <span class="episode-rating">
+                  <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                  ${ep.imdb_rating}
+                </span>
+              ` : ''}
+            </div>
+          </div>
+          <button class="episode-play-btn" onclick="event.stopPropagation(); playEpisode(${ep.id})">
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function toggleSeason(seasonId) {
+      const accordion = document.getElementById(`season-${seasonId}`);
+      accordion.classList.toggle('open');
+    }
+
+    function toggleDescription() {
+      const desc = document.getElementById('series-description');
+      const btn = document.getElementById('expand-btn');
+      
+      if (desc.classList.contains('clamped')) {
+        desc.classList.remove('clamped');
+        btn.textContent = 'Show less';
+      } else {
+        desc.classList.add('clamped');
+        btn.textContent = 'Show more';
+      }
+    }
+
+    function playEpisode(episodeId) {
+      window.location.href = `/episode-player.html?id=${episodeId}`;
+    }
+
+    function playFirstUnwatched() {
+      // Find first unwatched episode
+      for (const season of seriesData.seasons) {
+        for (const episode of season.episodes) {
+          if (!episode.progress_percentage || episode.progress_percentage < 95) {
+            playEpisode(episode.id);
+            return;
+          }
+        }
+      }
+
+      // If all watched, play first episode
+      if (seriesData.seasons.length > 0 && seriesData.seasons[0].episodes.length > 0) {
+        playEpisode(seriesData.seasons[0].episodes[0].id);
+      }
+    }
+
+    async function toggleWatchlist() {
+      try {
+        await toggleSeriesWatchlist(seriesData.id, profile.id, inWatchlist);
+        inWatchlist = !inWatchlist;
+        updateWatchlistButton();
+      } catch (error) {
+        alert('Error updating watchlist: ' + error.message);
+      }
+    }
+
+    function updateWatchlistButton() {
+      const btn = document.getElementById('watchlist-btn');
+      if (inWatchlist) {
+        btn.innerHTML = `
+          <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+          </svg>
+          In My List
+        `;
+      } else {
+        btn.innerHTML = `
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          My List
+        `;
+      }
+    }
+
+    // Load series on page load
+    loadSeries();
+  </script>
+</body>
+</html>

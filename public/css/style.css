@@ -443,30 +443,39 @@ a:hover {
    ============================================ */
 .movie-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: var(--space-md);
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-lg);
+  padding: var(--space-sm) 0;
 }
 
 .movie-card {
   cursor: pointer;
-  transition: transform var(--transition-base);
+  transition: all var(--transition-base);
+  position: relative;
 }
 
 .movie-card:hover {
-  transform: scale(1.05);
+  transform: translateY(-8px) scale(1.02);
+  z-index: 10;
 }
 
 .movie-card:hover .movie-poster {
-  box-shadow: 0 8px 32px var(--accent-glow);
+  box-shadow: 0 12px 48px rgba(124, 92, 252, 0.3), 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.movie-card:hover .movie-info-overlay {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .movie-poster-wrapper {
   position: relative;
   width: 100%;
-  padding-top: 150%; /* 2:3 aspect ratio */
+  padding-top: 150%; /* 2:3 aspect ratio - uniform for all posters */
   border-radius: var(--radius-md);
   overflow: hidden;
   background: linear-gradient(135deg, var(--bg-card), #1a1a2e);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .movie-poster {
@@ -476,7 +485,7 @@ a:hover {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: box-shadow var(--transition-base);
+  transition: all var(--transition-base);
 }
 
 .movie-poster-fallback {
@@ -488,16 +497,67 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-direction: column;
   background: linear-gradient(135deg, var(--bg-card), #1a1a2e);
   color: var(--text-muted);
+  padding: var(--space-md);
+  text-align: center;
+}
+
+.movie-poster-fallback svg {
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--space-sm);
+  opacity: 0.5;
+}
+
+/* Hover overlay with quick info */
+.movie-info-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.7) 70%, transparent 100%);
+  padding: var(--space-lg) var(--space-md) var(--space-md);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all var(--transition-base);
+  pointer-events: none;
+}
+
+.movie-info-overlay-title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  margin-bottom: var(--space-xs);
+  color: white;
+}
+
+.movie-info-overlay-meta {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-xs);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.movie-info-overlay-genre {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .movie-rating-badge {
   position: absolute;
-  bottom: var(--space-sm);
-  left: var(--space-sm);
+  top: var(--space-sm);
+  right: var(--space-sm);
   padding: 4px var(--space-sm);
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(8px);
   border-radius: 4px;
   font-size: var(--text-label);
   font-weight: 600;
@@ -508,6 +568,7 @@ a:hover {
   align-items: center;
   gap: 4px;
   font-variant-numeric: tabular-nums;
+  border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
 .movie-progress-bar {
@@ -515,14 +576,16 @@ a:hover {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 3px;
+  height: 4px;
   background: rgba(255, 255, 255, 0.1);
+  z-index: 2;
 }
 
 .movie-progress-fill {
   height: 100%;
-  background: var(--accent);
+  background: linear-gradient(90deg, var(--accent), #9d7cfc);
   transition: width var(--transition-base);
+  box-shadow: 0 0 8px var(--accent);
 }
 
 .movie-info {

@@ -155,17 +155,71 @@
 
       <input type="file" id="file-input" accept="video/*,.mkv,.avi">
 
-      <div class="form-group">
-        <label class="form-label" for="movie-title">Movie Title (optional)</label>
-        <input 
-          type="text" 
-          id="movie-title" 
-          class="form-input" 
-          placeholder="Leave blank to auto-detect from filename…"
-        >
-        <small class="form-hint">
-          Used for OMDB metadata lookup. If blank, we'll extract from filename.
-        </small>
+      <!-- Metadata Search Section -->
+      <div style="margin-bottom: var(--space-lg); padding: var(--space-lg); border: 1px solid var(--border); border-radius: var(--radius-md); background: rgba(124, 92, 252, 0.05);">
+        <h3 style="margin-bottom: var(--space-md); font-size: var(--text-lg);">Metadata Lookup</h3>
+        
+        <div class="form-group">
+          <label class="form-label">Search By</label>
+          <div style="display: flex; gap: var(--space-md); margin-bottom: var(--space-md);">
+            <label style="display: flex; align-items: center; gap: var(--space-sm); cursor: pointer;">
+              <input type="radio" name="search-type" value="title" checked>
+              <span>Movie Title</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: var(--space-sm); cursor: pointer;">
+              <input type="radio" name="search-type" value="imdb">
+              <span>IMDb ID</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="title-search-group" class="form-group">
+          <label class="form-label" for="movie-title">Movie Title</label>
+          <input 
+            type="text" 
+            id="movie-title" 
+            class="form-input" 
+            placeholder="Leave blank to auto-detect from filename…"
+          >
+          <small class="form-hint">
+            Used for IMDb metadata lookup. If blank, we'll extract from filename.
+          </small>
+        </div>
+
+        <div id="imdb-search-group" class="form-group" style="display: none;">
+          <label class="form-label" for="imdb-id">IMDb ID</label>
+          <div style="display: flex; gap: var(--space-sm);">
+            <input 
+              type="text" 
+              id="imdb-id" 
+              class="form-input" 
+              placeholder="e.g., tt0111161"
+              style="flex: 1;"
+            >
+            <button class="btn btn-secondary" id="fetch-metadata-btn" type="button">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              Fetch
+            </button>
+          </div>
+          <small class="form-hint">
+            Enter IMDb ID (with or without 'tt' prefix) to fetch metadata before upload.
+          </small>
+        </div>
+
+        <!-- Metadata Preview -->
+        <div id="metadata-preview" style="display: none; margin-top: var(--space-md); padding: var(--space-md); background: var(--bg-card); border-radius: var(--radius-md);">
+          <div style="display: flex; gap: var(--space-md);">
+            <div id="preview-poster" style="width: 80px; height: 120px; border-radius: var(--radius-sm); overflow: hidden; flex-shrink: 0; background: var(--bg-secondary);"></div>
+            <div style="flex: 1;">
+              <div id="preview-title" style="font-weight: 600; margin-bottom: var(--space-xs);"></div>
+              <div id="preview-year" style="font-size: var(--text-sm); color: var(--text-muted); margin-bottom: var(--space-xs);"></div>
+              <div id="preview-genre" style="font-size: var(--text-sm); color: var(--text-secondary);"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <button class="btn btn-primary" id="upload-btn" style="width: 100%;" disabled>
@@ -210,10 +264,94 @@
     const statusMessage = document.getElementById('status-message');
     const moviePreview = document.getElementById('movie-preview');
 
+    // New elements for IMDb search
+    const searchTypeRadios = document.querySelectorAll('input[name="search-type"]');
+    const titleSearchGroup = document.getElementById('title-search-group');
+    const imdbSearchGroup = document.getElementById('imdb-search-group');
+    const imdbIdInput = document.getElementById('imdb-id');
+    const fetchMetadataBtn = document.getElementById('fetch-metadata-btn');
+    const metadataPreview = document.getElementById('metadata-preview');
+    const previewPoster = document.getElementById('preview-poster');
+    const previewTitle = document.getElementById('preview-title');
+    const previewYear = document.getElementById('preview-year');
+    const previewGenre = document.getElementById('preview-genre');
+
     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
     let selectedFile = null;
     let uploadId = null;
     let isUploading = false;
+    let previewMetadata = null; // Store fetched metadata
+
+    // Handle search type toggle
+    searchTypeRadios.forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        if (e.target.value === 'title') {
+          titleSearchGroup.style.display = 'block';
+          imdbSearchGroup.style.display = 'none';
+          metadataPreview.style.display = 'none';
+          previewMetadata = null;
+        } else {
+          titleSearchGroup.style.display = 'none';
+          imdbSearchGroup.style.display = 'block';
+          metadataPreview.style.display = 'none';
+          previewMetadata = null;
+        }
+      });
+    });
+
+    // Fetch metadata by IMDb ID
+    fetchMetadataBtn.addEventListener('click', async () => {
+      const imdbId = imdbIdInput.value.trim();
+      
+      if (!imdbId) {
+        showToast('Please enter an IMDb ID', 'error');
+        return;
+      }
+
+      try {
+        fetchMetadataBtn.disabled = true;
+        fetchMetadataBtn.textContent = 'Fetching...';
+
+        const response = await fetchAPI(`/api/metadata/search/imdb/${imdbId}`);
+
+        if (response.success && response.metadata) {
+          previewMetadata = response.metadata;
+          displayMetadataPreview(response.metadata);
+          showToast('Metadata fetched successfully!', 'success');
+        } else {
+          showToast('Movie not found with this IMDb ID', 'error');
+          metadataPreview.style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Metadata fetch error:', error);
+        showToast('Failed to fetch metadata', 'error');
+        metadataPreview.style.display = 'none';
+      } finally {
+        fetchMetadataBtn.disabled = false;
+        fetchMetadataBtn.innerHTML = `
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          Fetch
+        `;
+      }
+    });
+
+    // Display metadata preview
+    function displayMetadataPreview(metadata) {
+      if (metadata.poster_url) {
+        previewPoster.innerHTML = `<img src="${metadata.poster_url}" alt="${metadata.title}" style="width: 100%; height: 100%; object-fit: cover;">`;
+      } else {
+        previewPoster.innerHTML = '<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-muted);">No poster</div>';
+      }
+
+      previewTitle.textContent = metadata.title || 'Unknown';
+      previewYear.textContent = metadata.year ? `${metadata.year} • ${metadata.runtime || 'N/A'}` : 'N/A';
+      previewGenre.textContent = metadata.genre || 'No genre information';
+
+      metadataPreview.style.display = 'block';
+    }
 
     // Upload zone interactions (no need for onclick since label handles it)
 
@@ -325,17 +463,29 @@
         }
 
         // Step 3: Complete upload and fetch metadata
-        progressText.textContent = 'Processing and fetching metadata from OMDB…';
+        progressText.textContent = previewMetadata 
+          ? 'Processing video file…' 
+          : 'Processing and fetching metadata from IMDb…';
         progressBar.style.width = '100%';
+
+        // Use pre-fetched metadata if available, otherwise use title search
+        const searchType = document.querySelector('input[name="search-type"]:checked').value;
+        const completePayload = {
+          uploadId,
+          filename: selectedFile.name,
+          totalChunks
+        };
+
+        // If using IMDb ID and we have metadata, send the IMDb ID
+        if (searchType === 'imdb' && previewMetadata && previewMetadata.imdb_id) {
+          completePayload.imdbId = previewMetadata.imdb_id;
+        } else if (searchType === 'title' && movieTitle.value) {
+          completePayload.title = movieTitle.value;
+        }
 
         const completeData = await fetchAPI('/upload/complete', {
           method: 'POST',
-          body: JSON.stringify({
-            uploadId,
-            filename: selectedFile.name,
-            totalChunks,
-            title: movieTitle.value || null
-          })
+          body: JSON.stringify(completePayload)
         });
 
         // Show success and preview

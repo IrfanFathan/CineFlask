@@ -22,9 +22,23 @@ const streamRoutes = require('./routes/stream');
 const progressRoutes = require('./routes/progress');
 const watchlistRoutes = require('./routes/watchlist');
 const subtitleRoutes = require('./routes/subtitles');
+const metadataRoutes = require('./routes/metadata');
+const adminRoutes = require('./routes/admin');
+
+// Import series routes
+const seriesRoutes = require('./routes/series');
+const seasonsRoutes = require('./routes/seasons');
+const episodesRoutes = require('./routes/episodes');
+const uploadSeriesRoutes = require('./routes/upload-series');
+const streamEpisodeRoutes = require('./routes/stream-episode');
+const subtitlesEpisodeRoutes = require('./routes/subtitles-episode');
+const progressEpisodeRoutes = require('./routes/progress-episode');
+const watchlistSeriesRoutes = require('./routes/watchlist-series');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
+const securityHeaders = require('./middleware/security');
+const { generalLimiter, authLimiter, uploadLimiter, metadataLimiter } = require('./middleware/rateLimiter');
 
 // Initialize Express app
 const app = express();
@@ -32,6 +46,12 @@ const app = express();
 // ============================================
 // MIDDLEWARE
 // ============================================
+
+// Security headers (helmet)
+app.use(securityHeaders);
+
+// General rate limiting
+app.use(generalLimiter);
 
 // Enable CORS for all LAN devices
 app.use(cors({
@@ -60,14 +80,29 @@ app.use(express.static(path.join(__dirname, 'public')));
 // API ROUTES
 // ============================================
 
-app.use('/api/auth', authRoutes);
+// Auth routes with strict rate limiting
+app.use('/api/auth', authLimiter, authRoutes);
+
+// Regular routes
 app.use('/api/profiles', profileRoutes);
 app.use('/api/movies', movieRoutes);
-app.use('/api/upload', uploadRoutes);
+app.use('/api/upload', uploadLimiter, uploadRoutes);
 app.use('/api/stream', streamRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/subtitles', subtitleRoutes);
+app.use('/api/metadata', metadataLimiter, metadataRoutes);
+app.use('/api/admin', adminRoutes);
+
+// Series routes
+app.use('/api/series', seriesRoutes);
+app.use('/api/seasons', seasonsRoutes);
+app.use('/api/episodes', episodesRoutes);
+app.use('/api/upload-series', uploadLimiter, uploadSeriesRoutes);
+app.use('/api/stream/episode', streamEpisodeRoutes);
+app.use('/api/subtitles/episode', subtitlesEpisodeRoutes);
+app.use('/api/progress/episode', progressEpisodeRoutes);
+app.use('/api/watchlist/series', watchlistSeriesRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -105,7 +140,7 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'change_this_to_a_long
 }
 
 // Ensure required directories exist
-const requiredDirs = ['uploads', 'temp'];
+const requiredDirs = ['uploads', 'temp', 'series', 'subtitles/episodes'];
 requiredDirs.forEach(dir => {
   const dirPath = path.join(__dirname, dir);
   if (!fs.existsSync(dirPath)) {

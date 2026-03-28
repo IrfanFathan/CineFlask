@@ -1,0 +1,56 @@
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database (will be in mounted volume)
+*.db
+*.db-shm
+*.db-wal
+
+# Uploads (will be in mounted volume)
+uploads/*
+!uploads/.gitkeep
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Test
+test
+tests
+*.test.js
+*.spec.js
+coverage
+
+# Documentation
+README.md
+docs
+*.md
+!PHASE1_TEST_CHECKLIST.md
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore

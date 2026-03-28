@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Series - CineLocal</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .upload-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: var(--space-2xl) var(--space-lg);
+    }
+
+    .wizard-steps {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: var(--space-2xl);
+      position: relative;
+    }
+
+    .wizard-steps::before {
+      content: '';
+      position: absolute;
+      top: 20px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--border);
+      z-index: 0;
+    }
+
+    .wizard-step {
+      flex: 1;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .wizard-step-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto var(--space-sm);
+      font-weight: 600;
+      transition: all var(--transition-base);
+    }
+
+    .wizard-step.active .wizard-step-circle {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .wizard-step.completed .wizard-step-circle {
+      background: var(--success);
+      border-color: var(--success);
+      color: white;
+    }
+
+    .wizard-step-label {
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+    }
+
+    .wizard-step.active .wizard-step-label {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .upload-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-2xl);
+    }
+
+    .step-content {
+      display: none;
+    }
+
+    .step-content.active {
+      display: block;
+    }
+
+    .form-group {
+      margin-bottom: var(--space-lg);
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: var(--space-sm);
+      font-weight: 500;
+      font-size: var(--text-sm);
+    }
+
+    .form-input {
+      width: 100%;
+      padding: var(--space-md);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: var(--text-body);
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .toggle-switch {
+      display: flex;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-md);
+    }
+
+    .toggle-btn {
+      flex: 1;
+      padding: var(--space-sm);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition-base);
+    }
+
+    .toggle-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .metadata-preview {
+      display: none;
+      margin-top: var(--space-lg);
+      padding: var(--space-lg);
+      background: var(--bg-elevated);
+      border-radius: var(--radius-md);
+    }
+
+    .metadata-preview.visible {
+      display: flex;
+      gap: var(--space-lg);
+    }
+
+    .metadata-poster {
+      width: 120px;
+      height: 180px;
+      object-fit: cover;
+      border-radius: var(--radius-md);
+      background: var(--bg-card);
+    }
+
+    .metadata-info h3 {
+      margin-bottom: var(--space-sm);
+    }
+
+    .metadata-detail {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+      margin-bottom: var(--space-xs);
+    }
+
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-2xl);
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition-base);
+      margin-bottom: var(--space-lg);
+    }
+
+    .upload-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(124, 92, 252, 0.1);
+      border-style: solid;
+    }
+
+    .upload-zone:hover {
+      border-color: var(--accent);
+    }
+
+    #file-input {
+      display: none;
+    }
+
+    .progress-container {
+      display: none;
+      margin-top: var(--space-lg);
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: var(--space-sm);
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.3s;
+      border-radius: 4px;
+    }
+
+    .progress-text {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .wizard-actions {
+      display: flex;
+      gap: var(--space-md);
+      margin-top: var(--space-xl);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: var(--space-md);
+      margin-top: var(--space-md);
+    }
+
+    select.form-input {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="navbar-content">
+      <a href="/home.html" class="navbar-logo">
+        <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+        CineLocal
+      </a>
+
+      <div class="navbar-actions">
+        <a href="/home.html" class="btn btn-secondary">Back to Home</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="navbar-spacer"></div>
+
+  <div class="upload-container">
+    <h1 style="margin-bottom: var(--space-lg);">Upload TV Series</h1>
+
+    <!-- Wizard Steps -->
+    <div class="wizard-steps">
+      <div class="wizard-step active" id="step-indicator-1">
+        <div class="wizard-step-circle">1</div>
+        <div class="wizard-step-label">Create Series</div>
+      </div>
+      <div class="wizard-step" id="step-indicator-2">
+        <div class="wizard-step-circle">2</div>
+        <div class="wizard-step-label">Add Season</div>
+      </div>
+      <div class="wizard-step" id="step-indicator-3">
+        <div class="wizard-step-circle">3</div>
+        <div class="wizard-step-label">Upload Episode</div>
+      </div>
+    </div>
+
+    <div class="upload-card">
+      <!-- Step 1: Create Series -->
+      <div class="step-content active" id="step-1">
+        <h2>Step 1: Create Series</h2>
+        <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">
+          Enter the series title or IMDb ID to fetch metadata automatically.
+        </p>
+
+        <div class="toggle-switch">
+          <button class="toggle-btn active" onclick="switchInputMode('title')">By Title</button>
+          <button class="toggle-btn" onclick="switchInputMode('imdb')">By IMDb ID</button>
+        </div>
+
+        <div class="form-group" id="title-input-group">
+          <label class="form-label" for="series-title">Series Title</label>
+          <input type="text" id="series-title" class="form-input" placeholder="e.g., Breaking Bad">
+        </div>
+
+        <div class="form-group" id="imdb-input-group" style="display: none;">
+          <label class="form-label" for="series-imdb">IMDb ID</label>
+          <input type="text" id="series-imdb" class="form-input" placeholder="e.g., tt0903747">
+        </div>
+
+        <button class="btn btn-primary" onclick="fetchSeriesMetadata()">Fetch from OMDB</button>
+
+        <div class="metadata-preview" id="series-preview">
+          <img id="series-poster" class="metadata-poster" alt="Series poster">
+          <div class="metadata-info">
+            <h3 id="series-title-preview"></h3>
+            <div class="metadata-detail" id="series-year"></div>
+            <div class="metadata-detail" id="series-genre"></div>
+            <div class="metadata-detail" id="series-rating"></div>
+            <p id="series-description" style="margin-top: var(--space-md); max-width: 50ch;"></p>
+          </div>
+        </div>
+
+        <div class="wizard-actions">
+          <button class="btn btn-primary" id="confirm-series-btn" style="display: none;" onclick="confirmSeries()">
+            Confirm & Continue
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: Add Season -->
+      <div class="step-content" id="step-2">
+        <h2>Step 2: Add Season</h2>
+        <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">
+          Create a season for your series. Season metadata will be fetched from OMDB.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label" for="season-number">Season Number</label>
+          <input type="number" id="season-number" class="form-input" value="1" min="1">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="season-title">Season Title (Optional)</label>
+          <input type="text" id="season-title" class="form-input" placeholder="e.g., Season 1">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="season-year">Year (Optional)</label>
+          <input type="number" id="season-year" class="form-input" placeholder="e.g., 2013">
+        </div>
+
+        <button class="btn btn-primary" onclick="createSeason()">Create Season</button>
+
+        <div class="wizard-actions">
+          <button class="btn btn-secondary" onclick="goToStep(1)">Back</button>
+          <button class="btn btn-primary" id="continue-to-episode-btn" style="display: none;" onclick="goToStep(3)">
+            Continue to Upload
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: Upload Episode -->
+      <div class="step-content" id="step-3">
+        <h2>Step 3: Upload Episode</h2>
+        <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">
+          Upload video files for episodes in your series.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label" for="select-series">Select Series</label>
+          <select id="select-series" class="form-input" onchange="loadSeasons()">
+            <option value="">-- Select Series --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="select-season">Select Season</label>
+          <select id="select-season" class="form-input">
+            <option value="">-- Select Season --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="episode-number">Episode Number</label>
+          <input type="number" id="episode-number" class="form-input" value="1" min="1">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="episode-title">Episode Title (Optional)</label>
+          <input type="text" id="episode-title" class="form-input" placeholder="e.g., Pilot">
+        </div>
+
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+          <div class="upload-zone-icon">
+            <svg width="64" height="64" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"></path>
+            </svg>
+          </div>
+          <div class="upload-zone-text">Click to select video file or drag and drop</div>
+          <div class="upload-zone-subtext">Supports: MP4, MKV, AVI, MOV, WebM, M4V (up to 50GB)</div>
+        </div>
+        <input type="file" id="file-input" accept=".mp4,.mkv,.avi,.mov,.webm,.m4v">
+
+        <div id="selected-file-info" style="display: none; margin-top: var(--space-md);">
+          <strong>Selected file:</strong> <span id="file-name"></span> (<span id="file-size"></span>)
+        </div>
+
+        <div class="progress-container" id="progress-container">
+          <div class="progress-bar-container">
+            <div class="progress-bar" id="progress-bar"></div>
+          </div>
+          <div class="progress-text" id="progress-text">Uploading: 0%</div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" id="upload-btn" onclick="startEpisodeUpload()" disabled>
+            Upload Episode
+          </button>
+          <button class="btn btn-secondary" id="cancel-btn" onclick="cancelUpload()" style="display: none;">
+            Cancel
+          </button>
+        </div>
+
+        <div class="wizard-actions">
+          <button class="btn btn-secondary" onclick="goToStep(2)">Back to Season</button>
+          <button class="btn btn-primary" id="upload-another-btn" style="display: none;" onclick="resetEpisodeForm()">
+            Upload Another Episode
+          </button>
+          <button class="btn btn-primary" id="add-season-btn" style="display: none;" onclick="goToStep(2)">
+            Add New Season
+          </button>
+          <a href="/series.html" class="btn btn-success" id="done-btn" style="display: none;">
+            Done
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/utils.js"></script>
+  <script>
+    requireAuth();
+
+    const profile = getProfile();
+    if (!profile) {
+      window.location.href = '/profiles.html';
+    }
+
+    // State
+    let currentStep = 1;
+    let inputMode = 'title';
+    let seriesData = null;
+    let seasonData = null;
+    let uploadId = null;
+    let isUploading = false;
+
+    // Step 1: Switch input mode
+    function switchInputMode(mode) {
+      inputMode = mode;
+      document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+
+      if (mode === 'title') {
+        document.getElementById('title-input-group').style.display = 'block';
+        document.getElementById('imdb-input-group').style.display = 'none';
+      } else {
+        document.getElementById('title-input-group').style.display = 'none';
+        document.getElementById('imdb-input-group').style.display = 'block';
+      }
+    }
+
+    // Step 1: Fetch series metadata
+    async function fetchSeriesMetadata() {
+      const title = document.getElementById('series-title').value;
+      const imdbId = document.getElementById('series-imdb').value;
+
+      if (!title && !imdbId) {
+        alert('Please enter a series title or IMDb ID');
+        return;
+      }
+
+      try {
+        showLoading();
+        const data = await fetchAPI('/upload-series/series/init', {
+          method: 'POST',
+          body: JSON.stringify({
+            seriesTitle: title,
+            imdbId: imdbId
+          })
+        });
+
+        seriesData = data.seriesData;
+        displaySeriesPreview(seriesData);
+        document.getElementById('confirm-series-btn').style.display = 'block';
+        hideLoading();
+      } catch (error) {
+        hideLoading();
+        alert('Error fetching series metadata: ' + error.message);
+      }
+    }
+
+    function displaySeriesPreview(series) {
+      document.getElementById('series-poster').src = series.poster_url || '';
+      document.getElementById('series-title-preview').textContent = series.title;
+      document.getElementById('series-year').textContent = series.year ? `Year: ${series.year}${series.end_year ? '–' + series.end_year : '–Present'}` : '';
+      document.getElementById('series-genre').textContent = series.genre ? `Genre: ${series.genre}` : '';
+      document.getElementById('series-rating').textContent = series.imdb_rating ? `IMDb: ${series.imdb_rating}` : '';
+      document.getElementById('series-description').textContent = series.description || '';
+      document.getElementById('series-preview').classList.add('visible');
+    }
+
+    function confirmSeries() {
+      goToStep(2);
+    }
+
+    // Step 2: Create season
+    async function createSeason() {
+      const seasonNumber = document.getElementById('season-number').value;
+      const seasonTitle = document.getElementById('season-title').value;
+      const seasonYear = document.getElementById('season-year').value;
+
+      if (!seriesData) {
+        alert('Please create a series first');
+        return;
+      }
+
+      try {
+        showLoading();
+        const data = await fetchAPI('/upload-series/series/season', {
+          method: 'POST',
+          body: JSON.stringify({
+            seriesId: seriesData.id,
+            seasonNumber: parseInt(seasonNumber),
+            title: seasonTitle,
+            year: seasonYear ? parseInt(seasonYear) : null
+          })
+        });
+
+        seasonData = data.season;
+        alert(`Season ${seasonNumber} created successfully!`);
+        document.getElementById('continue-to-episode-btn').style.display = 'block';
+        
+        // Auto-increment season number for next season
+        document.getElementById('season-number').value = parseInt(seasonNumber) + 1;
+        hideLoading();
+      } catch (error) {
+        hideLoading();
+        alert('Error creating season: ' + error.message);
+      }
+    }
+
+    // Step 3: Load series and seasons for episode upload
+    async function loadAllSeries() {
+      try {
+        const data = await fetchAPI('/series');
+        const selectSeries = document.getElementById('select-series');
+        selectSeries.innerHTML = '<option value="">-- Select Series --</option>';
+        
+        data.series.forEach(series => {
+          const option = document.createElement('option');
+          option.value = series.id;
+          option.textContent = series.title;
+          if (seriesData && series.id === seriesData.id) {
+            option.selected = true;
+          }
+          selectSeries.appendChild(option);
+        });
+
+        if (seriesData) {
+          loadSeasons();
+        }
+      } catch (error) {
+        console.error('Error loading series:', error);
+      }
+    }
+
+    async function loadSeasons() {
+      const seriesId = document.getElementById('select-series').value;
+      if (!seriesId) {
+        document.getElementById('select-season').innerHTML = '<option value="">-- Select Season --</option>';
+        return;
+      }
+
+      try {
+        const data = await fetchAPI(`/series/${seriesId}`);
+        const selectSeason = document.getElementById('select-season');
+        selectSeason.innerHTML = '<option value="">-- Select Season --</option>';
+        
+        data.series.seasons.forEach(season => {
+          const option = document.createElement('option');
+          option.value = season.id;
+          option.textContent = `${season.title} (${season.episode_count || 0} episodes)`;
+          if (seasonData && season.id === seasonData.id) {
+            option.selected = true;
+          }
+          selectSeason.appendChild(option);
+        });
+      } catch (error) {
+        console.error('Error loading seasons:', error);
+      }
+    }
+
+    // File selection
+    let selectedFile = null;
+    document.getElementById('file-input').addEventListener('change', (e) => {
+      selectedFile = e.target.files[0];
+      if (selectedFile) {
+        document.getElementById('file-name').textContent = selectedFile.name;
+        document.getElementById('file-size').textContent = formatFileSize(selectedFile.size);
+        document.getElementById('selected-file-info').style.display = 'block';
+        document.getElementById('upload-btn').disabled = false;
+      }
+    });
+
+    // Drag and drop
+    const uploadZone = document.getElementById('upload-zone');
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('dragover');
+    });
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('dragover');
+    });
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        selectedFile = files[0];
+        document.getElementById('file-name').textContent = selectedFile.name;
+        document.getElementById('file-size').textContent = formatFileSize(selectedFile.size);
+        document.getElementById('selected-file-info').style.display = 'block';
+        document.getElementById('upload-btn').disabled = false;
+      }
+    });
+
+    // Upload episode
+    async function startEpisodeUpload() {
+      const seasonId = document.getElementById('select-season').value;
+      const episodeNumber = document.getElementById('episode-number').value;
+      const episodeTitle = document.getElementById('episode-title').value;
+
+      if (!seasonId) {
+        alert('Please select a season');
+        return;
+      }
+
+      if (!selectedFile) {
+        alert('Please select a video file');
+        return;
+      }
+
+      try {
+        isUploading = true;
+        document.getElementById('upload-btn').disabled = true;
+        document.getElementById('cancel-btn').style.display = 'inline-block';
+        document.getElementById('progress-container').style.display = 'block';
+
+        // Initialize upload
+        const initData = await fetchAPI('/upload-series/episode/init', {
+          method: 'POST',
+          body: JSON.stringify({
+            filename: selectedFile.name,
+            filesize: selectedFile.size,
+            seasonId: parseInt(seasonId),
+            episodeNumber: parseInt(episodeNumber)
+          })
+        });
+
+        uploadId = initData.uploadId;
+
+        // Upload chunks
+        const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+        const totalChunks = Math.ceil(selectedFile.size / CHUNK_SIZE);
+
+        for (let i = 0; i < totalChunks; i++) {
+          if (!isUploading) break;
+
+          const start = i * CHUNK_SIZE;
+          const end = Math.min(start + CHUNK_SIZE, selectedFile.size);
+          const chunk = selectedFile.slice(start, end);
+
+          const formData = new FormData();
+          formData.append('chunk', chunk);
+          formData.append('uploadId', uploadId);
+          formData.append('chunkIndex', i);
+          formData.append('totalChunks', totalChunks);
+
+          await fetchAPI('/upload-series/episode/chunk', {
+            method: 'POST',
+            body: formData
+          });
+
+          const progress = ((i + 1) / totalChunks) * 100;
+          updateProgress(progress);
+        }
+
+        if (isUploading) {
+          // Complete upload
+          const completeData = await fetchAPI('/upload-series/episode/complete', {
+            method: 'POST',
+            body: JSON.stringify({
+              uploadId,
+              seasonId: parseInt(seasonId),
+              episodeNumber: parseInt(episodeNumber),
+              filename: selectedFile.name,
+              totalChunks,
+              title: episodeTitle
+            })
+          });
+
+          alert(`Episode ${episodeNumber} uploaded successfully!`);
+          document.getElementById('upload-another-btn').style.display = 'inline-block';
+          document.getElementById('add-season-btn').style.display = 'inline-block';
+          document.getElementById('done-btn').style.display = 'inline-block';
+          document.getElementById('done-btn').href = `/series.html?id=${completeData.episode.series_id}`;
+        }
+
+      } catch (error) {
+        alert('Upload error: ' + error.message);
+      } finally {
+        isUploading = false;
+        document.getElementById('cancel-btn').style.display = 'none';
+      }
+    }
+
+    function cancelUpload() {
+      isUploading = false;
+      if (uploadId) {
+        fetchAPI('/upload-series/episode/cancel', {
+          method: 'POST',
+          body: JSON.stringify({ uploadId })
+        });
+      }
+      resetEpisodeForm();
+    }
+
+    function updateProgress(percent) {
+      document.getElementById('progress-bar').style.width = percent + '%';
+      document.getElementById('progress-text').textContent = `Uploading: ${Math.round(percent)}%`;
+    }
+
+    function resetEpisodeForm() {
+      selectedFile = null;
+      document.getElementById('file-input').value = '';
+      document.getElementById('selected-file-info').style.display = 'none';
+      document.getElementById('progress-container').style.display = 'none';
+      document.getElementById('upload-btn').disabled = true;
+      document.getElementById('episode-number').value = parseInt(document.getElementById('episode-number').value) + 1;
+      document.getElementById('episode-title').value = '';
+      updateProgress(0);
+    }
+
+    // Wizard navigation
+    function goToStep(step) {
+      currentStep = step;
+      
+      document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
+      document.getElementById(`step-${step}`).classList.add('active');
+      
+      document.querySelectorAll('.wizard-step').forEach((el, i) => {
+        el.classList.remove('active', 'completed');
+        if (i + 1 === step) {
+          el.classList.add('active');
+        } else if (i + 1 < step) {
+          el.classList.add('completed');
+        }
+      });
+
+      if (step === 3) {
+        loadAllSeries();
+      }
+    }
+
+    // Helpers
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+  </script>
+</body>
+</html>

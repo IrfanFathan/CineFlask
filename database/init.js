@@ -107,6 +107,116 @@ try {
   `);
   console.log('✓ Subtitles table created');
 
+  // Series table - stores TV series metadata from OMDB
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS series (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      slug TEXT,
+      poster_url TEXT,
+      backdrop_url TEXT,
+      description TEXT,
+      year INTEGER,
+      end_year INTEGER,
+      genre TEXT,
+      creator TEXT,
+      actors TEXT,
+      imdb_rating TEXT,
+      imdb_id TEXT UNIQUE,
+      total_seasons INTEGER,
+      status TEXT,
+      uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  console.log('✓ Series table created');
+
+  // Seasons table - stores season information for each series
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS seasons (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      series_id INTEGER NOT NULL,
+      season_number INTEGER NOT NULL,
+      title TEXT,
+      year INTEGER,
+      poster_url TEXT,
+      episode_count INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (series_id) REFERENCES series(id) ON DELETE CASCADE,
+      UNIQUE(series_id, season_number)
+    )
+  `);
+  console.log('✓ Seasons table created');
+
+  // Episodes table - stores individual episode information
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS episodes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      season_id INTEGER NOT NULL,
+      series_id INTEGER NOT NULL,
+      episode_number INTEGER NOT NULL,
+      title TEXT,
+      description TEXT,
+      filename TEXT,
+      file_path TEXT,
+      file_size INTEGER,
+      duration_seconds INTEGER,
+      imdb_rating TEXT,
+      runtime TEXT,
+      uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE,
+      FOREIGN KEY (series_id) REFERENCES series(id) ON DELETE CASCADE,
+      UNIQUE(season_id, episode_number)
+    )
+  `);
+  console.log('✓ Episodes table created');
+
+  // Episode subtitles table - stores subtitle files for episodes
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS episode_subtitles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      episode_id INTEGER NOT NULL,
+      language TEXT NOT NULL,
+      label TEXT,
+      file_path TEXT,
+      is_default INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (episode_id) REFERENCES episodes(id) ON DELETE CASCADE
+    )
+  `);
+  console.log('✓ Episode subtitles table created');
+
+  // Episode progress table - stores resume positions for episodes
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS episode_progress (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      episode_id INTEGER NOT NULL,
+      series_id INTEGER NOT NULL,
+      profile_id INTEGER NOT NULL,
+      timestamp_seconds INTEGER DEFAULT 0,
+      duration_seconds INTEGER,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (episode_id) REFERENCES episodes(id) ON DELETE CASCADE,
+      FOREIGN KEY (series_id) REFERENCES series(id) ON DELETE CASCADE,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE,
+      UNIQUE(episode_id, profile_id)
+    )
+  `);
+  console.log('✓ Episode progress table created');
+
+  // Series watchlist table - stores watchlist for series
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS series_watchlist (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      series_id INTEGER NOT NULL,
+      profile_id INTEGER NOT NULL,
+      added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (series_id) REFERENCES series(id) ON DELETE CASCADE,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE,
+      UNIQUE(series_id, profile_id)
+    )
+  `);
+  console.log('✓ Series watchlist table created');
+
   // Create indexes for faster queries
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_movies_uploaded_by ON movies(uploaded_by);
@@ -116,6 +226,12 @@ try {
     CREATE INDEX IF NOT EXISTS idx_watchlist_user_profile ON watchlist(user_id, profile_id);
     CREATE INDEX IF NOT EXISTS idx_profiles_user ON profiles(user_id);
     CREATE INDEX IF NOT EXISTS idx_subtitles_movie ON subtitles(movie_id);
+    CREATE INDEX IF NOT EXISTS idx_seasons_series ON seasons(series_id);
+    CREATE INDEX IF NOT EXISTS idx_episodes_season ON episodes(season_id);
+    CREATE INDEX IF NOT EXISTS idx_episodes_series ON episodes(series_id);
+    CREATE INDEX IF NOT EXISTS idx_ep_progress_profile ON episode_progress(profile_id);
+    CREATE INDEX IF NOT EXISTS idx_series_watchlist_profile ON series_watchlist(profile_id);
+    CREATE INDEX IF NOT EXISTS idx_episode_subtitles_episode ON episode_subtitles(episode_id);
   `);
   console.log('✓ Database indexes created');
 

@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  cineflask:
+    build: .
+    container_name: cineflask
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET}
+      - IMDB_API_KEY=${IMDB_API_KEY}
+    volumes:
+      # Persistent data volumes
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+      # Optional: Mount your media library
+      # - /path/to/your/movies:/app/media/movies:ro
+      # - /path/to/your/series:/app/media/series:ro
+    networks:
+      - cineflask-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Nginx reverse proxy for HTTPS
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: cineflask-nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./ssl:/etc/nginx/ssl:ro
+  #   depends_on:
+  #     - cineflask
+  #   networks:
+  #     - cineflask-network
+
+networks:
+  cineflask-network:
+    driver: bridge
+
+volumes:
+  data:
+  uploads:

@@ -10,7 +10,7 @@ const path = require('path');
 const crypto = require('crypto');
 const db = require('../database/db');
 const authMiddleware = require('../middleware/authMiddleware');
-const { fetchMetadata, extractYear } = require('../helpers/metadata');
+const { fetchMetadata, fetchMetadataByImdbId, extractYear } = require('../helpers/metadata');
 
 const router = express.Router();
 
@@ -125,9 +125,9 @@ router.post('/chunk', upload.single('chunk'), (req, res, next) => {
 // Complete upload - merge chunks and save to database
 router.post('/complete', async (req, res, next) => {
   try {
-    const { uploadId, filename, totalChunks, title } = req.body;
+    const { uploadId, filename, totalChunks, title, imdbId } = req.body;
 
-    console.log('Complete upload request:', { uploadId, filename, totalChunks, title });
+    console.log('Complete upload request:', { uploadId, filename, totalChunks, title, imdbId });
 
     if (!uploadId || !filename || !totalChunks) {
       return res.status(400).json({
@@ -183,18 +183,24 @@ router.post('/complete', async (req, res, next) => {
     const stats = fs.statSync(finalPath);
     console.log(`✓ Final file size: ${stats.size} bytes`);
 
-    // Fetch metadata from OMDB
-    const movieTitle = title || basename;
-    const year = extractYear(filename);
-    const metadata = await fetchMetadata(movieTitle, year);
+    // Fetch metadata - use IMDb ID if provided, otherwise use title
+    let metadata;
+    if (imdbId) {
+      console.log(`📡 Fetching metadata by IMDb ID: ${imdbId}`);
+      metadata = await fetchMetadataByImdbId(imdbId);
+    } else {
+      const movieTitle = title || basename;
+      const year = extractYear(filename);
+      metadata = await fetchMetadata(movieTitle, year);
+    }
 
     // Save to database
     const result = db.prepare(`
       INSERT INTO movies (
         title, year, description, file_path, file_size,
         poster_url, imdb_id, genre, actors, director, runtime, imdb_rating,
-        uploaded_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        language, country, uploaded_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       metadata.title,
       metadata.year,
@@ -208,6 +214,8 @@ router.post('/complete', async (req, res, next) => {
       metadata.director,
       metadata.runtime,
       metadata.imdb_rating,
+      metadata.language,
+      metadata.country,
       req.user.id
     );
 

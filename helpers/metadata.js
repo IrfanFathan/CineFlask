@@ -1,8 +1,10 @@
 /**
- * OMDB Metadata Fetcher
- * Fetches movie metadata from OMDB API
+ * IMDb Metadata Fetcher (via OMDB API)
+ * Fetches movie metadata from OMDB API which provides IMDb data
  * Docs: http://www.omdbapi.com/
  */
+
+const { metadataCache, generateKey } = require('./cache');
 
 // Dynamic import for ES module compatibility
 let fetch;
@@ -11,7 +13,7 @@ let fetch;
 })();
 
 /**
- * Fetch movie metadata from OMDB
+ * Fetch movie metadata from OMDB (IMDb data)
  * @param {string} title - Movie title to search
  * @param {string} year - Optional year to narrow search
  * @returns {Promise<Object>} Movie metadata or null if not found
@@ -22,10 +24,18 @@ async function fetchMetadata(title, year = null) {
     fetch = (await import('node-fetch')).default;
   }
 
-  const apiKey = process.env.OMDB_API_KEY;
+  // Check cache first
+  const cacheKey = generateKey.metadata(title, year);
+  const cached = metadataCache.get(cacheKey);
+  if (cached) {
+    console.log(`💾 Cache hit for metadata: ${title}${year ? ` (${year})` : ''}`);
+    return cached;
+  }
+
+  const apiKey = process.env.IMDB_API_KEY || process.env.OMDB_API_KEY;
 
   if (!apiKey || apiKey === 'your_omdb_api_key_here') {
-    console.warn('⚠️  OMDB_API_KEY not configured. Skipping metadata fetch.');
+    console.warn('⚠️  IMDB_API_KEY not configured. Skipping metadata fetch.');
     return getDefaultMetadata(title, year);
   }
 
@@ -51,7 +61,7 @@ async function fetchMetadata(title, year = null) {
     }
 
     // Map OMDB response to our database schema
-    return {
+    const metadata = {
       title: data.Title || title,
       year: data.Year || year || 'Unknown',
       description: data.Plot !== 'N/A' ? data.Plot : 'No description available.',
@@ -61,12 +71,87 @@ async function fetchMetadata(title, year = null) {
       actors: data.Actors !== 'N/A' ? data.Actors : null,
       director: data.Director !== 'N/A' ? data.Director : null,
       runtime: data.Runtime !== 'N/A' ? data.Runtime : null,
-      imdb_rating: data.imdbRating !== 'N/A' ? data.imdbRating : null
+      imdb_rating: data.imdbRating !== 'N/A' ? data.imdbRating : null,
+      language: data.Language !== 'N/A' ? data.Language : null,
+      country: data.Country !== 'N/A' ? data.Country : null
     };
+
+    // Cache the result
+    metadataCache.set(cacheKey, metadata);
+    return metadata;
 
   } catch (error) {
     console.error('❌ OMDB API error:', error.message);
     return getDefaultMetadata(title, year);
+  }
+}
+
+/**
+ * Fetch movie metadata by IMDb ID
+ * @param {string} imdbId - IMDb ID (e.g., tt0111161)
+ * @returns {Promise<Object>} Movie metadata or null if not found
+ */
+async function fetchMetadataByImdbId(imdbId) {
+  // Ensure fetch is loaded
+  if (!fetch) {
+    fetch = (await import('node-fetch')).default;
+  }
+
+  // Check cache first
+  const cacheKey = generateKey.metadataByImdb(imdbId);
+  const cached = metadataCache.get(cacheKey);
+  if (cached) {
+    console.log(`💾 Cache hit for IMDb ID: ${imdbId}`);
+    return cached;
+  }
+
+  const apiKey = process.env.IMDB_API_KEY || process.env.OMDB_API_KEY;
+
+  if (!apiKey || apiKey === 'your_omdb_api_key_here') {
+    console.warn('⚠️  IMDB_API_KEY not configured. Skipping metadata fetch.');
+    return null;
+  }
+
+  try {
+    // Clean IMDb ID (ensure it starts with 'tt')
+    const cleanId = imdbId.trim().startsWith('tt') ? imdbId.trim() : `tt${imdbId.trim()}`;
+
+    const url = `http://www.omdbapi.com/?apikey=${apiKey}&i=${cleanId}`;
+
+    console.log(`📡 Fetching metadata for IMDb ID: ${cleanId}`);
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    // OMDB returns Response: "False" if not found
+    if (data.Response === 'False') {
+      console.warn(`⚠️  OMDB: ${data.Error || 'Movie not found'}`);
+      return null;
+    }
+
+    // Map OMDB response to our database schema
+    const metadata = {
+      title: data.Title || 'Unknown',
+      year: data.Year || 'Unknown',
+      description: data.Plot !== 'N/A' ? data.Plot : 'No description available.',
+      poster_url: data.Poster !== 'N/A' ? data.Poster : null,
+      imdb_id: data.imdbID || null,
+      genre: data.Genre !== 'N/A' ? data.Genre : null,
+      actors: data.Actors !== 'N/A' ? data.Actors : null,
+      director: data.Director !== 'N/A' ? data.Director : null,
+      runtime: data.Runtime !== 'N/A' ? data.Runtime : null,
+      imdb_rating: data.imdbRating !== 'N/A' ? data.imdbRating : null,
+      language: data.Language !== 'N/A' ? data.Language : null,
+      country: data.Country !== 'N/A' ? data.Country : null
+    };
+
+    // Cache the result
+    metadataCache.set(cacheKey, metadata);
+    return metadata;
+
+  } catch (error) {
+    console.error('❌ OMDB API error:', error.message);
+    return null;
   }
 }
 
@@ -113,12 +198,15 @@ function getDefaultMetadata(title, year) {
     actors: null,
     director: null,
     runtime: null,
-    imdb_rating: null
+    imdb_rating: null,
+    language: null,
+    country: null
   };
 }
 
 module.exports = {
   fetchMetadata,
+  fetchMetadataByImdbId,
   cleanMovieTitle,
   extractYear
 };

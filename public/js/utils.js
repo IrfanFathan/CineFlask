@@ -115,19 +115,35 @@ async function fetchAPI(endpoint, options = {}) {
     delete config.headers['Content-Type'];
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, config);
-  const data = await response.json();
-
-  if (!response.ok) {
-    if (response.status === 401) {
-      // Token expired or invalid
-      clearToken();
-      window.location.href = '/index.html';
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, config);
+    
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('Server returned non-JSON response. Please check if the server is running.');
     }
-    throw new Error(data.message || 'Request failed');
-  }
+    
+    const data = await response.json();
 
-  return data;
+    if (!response.ok) {
+      if (response.status === 401) {
+        // Token expired or invalid
+        clearToken();
+        window.location.href = '/index.html';
+      }
+      throw new Error(data.message || 'Request failed');
+    }
+
+    return data;
+  } catch (error) {
+    // Handle network errors
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Cannot connect to server. Please check if the server is running.');
+    }
+    // Re-throw other errors
+    throw error;
+  }
 }
 
 // ============================================
@@ -233,6 +249,8 @@ function getURLParam(name) {
  */
 function createMovieCard(movie, progressPercent = null) {
   const hasProgress = progressPercent !== null && progressPercent > 0;
+  const genres = movie.genre ? movie.genre.split(',').map(g => g.trim()).slice(0, 2).join(', ') : '';
+  const runtime = movie.runtime || '';
   
   return `
     <div class="movie-card" onclick="window.location.href='/movie.html?id=${movie.id}'">
@@ -243,6 +261,7 @@ function createMovieCard(movie, progressPercent = null) {
                <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                  <path d="M7 4v16M17 4v16M3 8h18M3 12h18M3 16h18M3 20h18M3 4h18"></path>
                </svg>
+               <span style="font-size: 12px; margin-top: 8px;">No Poster</span>
              </div>`
         }
         ${movie.imdb_rating 
@@ -260,6 +279,16 @@ function createMovieCard(movie, progressPercent = null) {
              </div>`
           : ''
         }
+        <!-- Hover overlay with quick info -->
+        <div class="movie-info-overlay">
+          <div class="movie-info-overlay-title">${movie.title}</div>
+          <div class="movie-info-overlay-meta">
+            <span>${movie.year || 'N/A'}</span>
+            ${runtime ? `<span>• ${runtime}</span>` : ''}
+            ${movie.imdb_rating ? `<span>• ⭐ ${movie.imdb_rating}</span>` : ''}
+          </div>
+          ${genres ? `<div class="movie-info-overlay-genre">${genres}</div>` : ''}
+        </div>
       </div>
       <div class="movie-info">
         <div class="movie-title">${movie.title}</div>
@@ -304,4 +333,176 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initIcons);
 } else {
   initIcons();
+}
+
+// ============================================
+// SERIES HELPERS
+// ============================================
+
+/**
+ * Format episode code (e.g., "S01 E03")
+ */
+function formatEpisodeCode(seasonNum, episodeNum) {
+  const s = String(seasonNum).padStart(2, '0');
+  const e = String(episodeNum).padStart(2, '0');
+  return `S${s} E${e}`;
+}
+
+/**
+ * Format series year range (e.g., "2013–2019" or "2022–Present")
+ */
+function formatSeriesYearRange(year, endYear, status) {
+  if (!year) return '';
+  
+  if (status === 'Ended' && endYear && endYear !== year) {
+    return `${year}–${endYear}`;
+  }
+  
+  if (status === 'Running' || status === 'Continuing') {
+    return `${year}–Present`;
+  }
+  
+  return year;
+}
+
+/**
+ * Get next episode for a given episode ID
+ */
+async function getNextEpisode(episodeId) {
+  try {
+    const data = await fetchAPI(`/episodes/${episodeId}`);
+    return data.next_episode || null;
+  } catch (error) {
+    console.error('Failed to get next episode:', error);
+    return null;
+  }
+}
+
+/**
+ * Save episode progress
+ */
+async function saveEpisodeProgress(episodeId, seriesId, profileId, timestamp, duration) {
+  try {
+    await fetchAPI('/progress/episode', {
+      method: 'POST',
+      body: JSON.stringify({
+        episode_id: episodeId,
+        series_id: seriesId,
+        profile_id: profileId,
+        timestamp,
+        duration
+      })
+    });
+  } catch (error) {
+    console.error('Failed to save episode progress:', error);
+  }
+}
+
+/**
+ * Get episode progress
+ */
+async function getEpisodeProgress(episodeId, profileId) {
+  try {
+    const data = await fetchAPI(`/progress/episode/${episodeId}?profile_id=${profileId}`);
+    return data.progress || null;
+  } catch (error) {
+    console.error('Failed to get episode progress:', error);
+    return null;
+  }
+}
+
+/**
+ * Toggle series watchlist
+ */
+async function toggleSeriesWatchlist(seriesId, profileId, currentState) {
+  try {
+    if (currentState) {
+      await fetchAPI('/watchlist/series', {
+        method: 'DELETE',
+        body: JSON.stringify({
+          series_id: seriesId,
+          profile_id: profileId
+        })
+      });
+      return false;
+    } else {
+      await fetchAPI('/watchlist/series', {
+        method: 'POST',
+        body: JSON.stringify({
+          series_id: seriesId,
+          profile_id: profileId
+        })
+      });
+      return true;
+    }
+  } catch (error) {
+    console.error('Failed to toggle series watchlist:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create series card HTML
+ */
+function createSeriesCard(series, episodeProgress = null) {
+  const hasProgress = episodeProgress && episodeProgress.progress_percentage > 0;
+  const seriesId = series.series_id || series.id;
+  const yearRange = formatSeriesYearRange(series.year, series.end_year, series.status);
+  
+  let episodeBadge = '';
+  if (episodeProgress && episodeProgress.season_number && episodeProgress.episode_number) {
+    const epCode = formatEpisodeCode(episodeProgress.season_number, episodeProgress.episode_number);
+    episodeBadge = `<div class="movie-rating-badge" style="background: var(--accent); top: 8px; right: 8px;">${epCode}</div>`;
+  }
+  
+  // Prepare metadata for hover overlay
+  const genres = series.genre ? series.genre.split(',').slice(0, 2).join(', ') : '';
+  const statusBadge = series.status ? series.status.charAt(0).toUpperCase() + series.status.slice(1) : '';
+  
+  return `
+    <div class="movie-card" onclick="window.location.href='/series.html?id=${seriesId}'">
+      <div class="movie-poster-wrapper">
+        ${series.poster_url 
+          ? `<img src="${series.poster_url}" alt="${series.title} poster" class="movie-poster" loading="lazy">`
+          : `<div class="movie-poster-fallback">
+               <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                 <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+                 <polyline points="17 2 12 7 7 2"></polyline>
+               </svg>
+               <div style="margin-top: 8px; font-size: 14px; opacity: 0.7;">No Poster</div>
+             </div>`
+        }
+        <div class="movie-rating-badge" style="background: var(--accent); top: 8px; left: 8px;">SERIES</div>
+        ${episodeBadge}
+        ${series.imdb_rating 
+          ? `<div class="movie-rating-badge" style="top: ${episodeBadge ? '42px' : '8px'}; right: 8px; border: 1px solid rgba(255,255,255,0.2);">
+               <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24">
+                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+               </svg>
+               ${series.imdb_rating}
+             </div>`
+          : ''
+        }
+        ${hasProgress 
+          ? `<div class="movie-progress-bar">
+               <div class="movie-progress-fill" style="width: ${episodeProgress.progress_percentage}%"></div>
+             </div>`
+          : ''
+        }
+        
+        <!-- Hover Overlay -->
+        <div class="movie-info-overlay">
+          <div class="movie-title" style="font-weight: 600; margin-bottom: 8px;">${series.title}</div>
+          <div class="movie-meta" style="margin-bottom: 8px;">
+            ${yearRange}${statusBadge ? ' · ' + statusBadge : ''}${series.imdb_rating ? ' · ⭐ ' + series.imdb_rating : ''}
+          </div>
+          ${genres ? `<div class="movie-meta" style="font-size: 12px; opacity: 0.8;">${genres}</div>` : ''}
+        </div>
+      </div>
+      <div class="movie-info">
+        <div class="movie-title">${series.title}</div>
+        <div class="movie-meta">${yearRange}${series.genre ? ' · ' + series.genre.split(',')[0] : ''}</div>
+      </div>
+    </div>
+  `;
 }

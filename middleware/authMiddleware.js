@@ -5,6 +5,7 @@
  */
 
 const jwt = require('jsonwebtoken');
+const db = require('../database/db');
 
 const authMiddleware = (req, res, next) => {
   try {
@@ -50,4 +51,40 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
+/**
+ * Admin-only middleware
+ * Requires authentication first, then checks if user is admin (first user)
+ */
+const requireAdmin = (req, res, next) => {
+  try {
+    // Check if user is authenticated (should be set by authMiddleware)
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    // Get the first user ID (admin)
+    const firstUser = db.prepare('SELECT id FROM users ORDER BY id ASC LIMIT 1').get();
+    
+    if (!firstUser || req.user.id !== firstUser.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin access required'
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Admin check error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Authorization error'
+    });
+  }
+};
+
 module.exports = authMiddleware;
+module.exports.authenticate = authMiddleware;
+module.exports.requireAdmin = requireAdmin;
