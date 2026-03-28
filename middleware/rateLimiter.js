@@ -11,7 +11,7 @@ const generalLimiter = rateLimit({
   max: 1000, // Limit each IP to 1000 requests per windowMs
   message: {
     success: false,
-    error: 'Too many requests from this IP, please try again later.'
+    message: 'Too many requests from this IP, please try again later.'
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
@@ -27,7 +27,7 @@ const authLimiter = rateLimit({
   max: 10, // Limit each IP to 10 login/register attempts per windowMs
   message: {
     success: false,
-    error: 'Too many authentication attempts, please try again later.'
+    message: 'Too many authentication attempts, please try again later.'
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -40,7 +40,7 @@ const uploadLimiter = rateLimit({
   max: 50, // Limit each IP to 50 uploads per hour
   message: {
     success: false,
-    error: 'Upload limit reached, please try again later.'
+    message: 'Upload limit reached, please try again later.'
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -52,7 +52,7 @@ const metadataLimiter = rateLimit({
   max: 30, // Limit each IP to 30 metadata requests per minute
   message: {
     success: false,
-    error: 'Too many metadata requests, please slow down.'
+    message: 'Too many metadata requests, please slow down.'
   },
   standardHeaders: true,
   legacyHeaders: false,

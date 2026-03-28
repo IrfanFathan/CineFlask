@@ -25,6 +25,15 @@ const authMiddleware = (req, res, next) => {
     // Verify token and decode payload
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    // Check if user still exists in database (handles DB wipes)
+    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(decoded.id);
+    if (!user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'User account no longer exists. Please log in again.' 
+      });
+    }
+
     // Attach user data to request object for use in routes
     req.user = decoded;
 

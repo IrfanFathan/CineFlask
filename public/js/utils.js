@@ -127,12 +127,13 @@ async function fetchAPI(endpoint, options = {}) {
     const data = await response.json();
 
     if (!response.ok) {
-      if (response.status === 401) {
+      // Handle 401 specifically, but avoid redirect loops on login/register endpoints
+      if (response.status === 401 && !endpoint.includes('/auth/')) {
         // Token expired or invalid
         clearToken();
         window.location.href = '/index.html';
       }
-      throw new Error(data.message || 'Request failed');
+      throw new Error(data.message || data.error || 'Request failed');
     }
 
     return data;

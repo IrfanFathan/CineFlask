@@ -12,6 +12,7 @@ const securityHeaders = helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'"], // Allow inline scripts for frontend
+      scriptSrcAttr: ["'unsafe-inline'"], // Allow inline event handlers
       styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles
       imgSrc: ["'self'", "data:", "https:", "http:"], // Allow external images (posters from OMDB)
       mediaSrc: ["'self'", "blob:"], // Allow self-hosted media and blob URLs
