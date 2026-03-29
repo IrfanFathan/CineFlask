@@ -24,6 +24,7 @@ const watchlistRoutes = require('./routes/watchlist');
 const subtitleRoutes = require('./routes/subtitles');
 const metadataRoutes = require('./routes/metadata');
 const adminRoutes = require('./routes/admin');
+const adminQuotaRoutes = require('./routes/admin-quota');
 const osRoutes = require('./routes/opensubtitles');
 
 // Import series routes
@@ -94,6 +95,7 @@ app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/subtitles', subtitleRoutes);
 app.use('/api/metadata', metadataLimiter, metadataRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin/quota', adminQuotaRoutes);
 app.use('/api/opensubtitles', osRoutes);
 
 // Series routes

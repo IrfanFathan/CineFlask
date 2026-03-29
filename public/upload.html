@@ -127,6 +127,73 @@
     .back-button-upload {
       margin-bottom: var(--space-lg);
     }
+
+    .quota-card {
+      background: linear-gradient(135deg, rgba(124, 92, 252, 0.1) 0%, rgba(124, 92, 252, 0.05) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      margin-bottom: var(--space-xl);
+    }
+
+    .quota-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-md);
+    }
+
+    .quota-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: var(--space-md);
+      margin-top: var(--space-md);
+    }
+
+    .quota-stat {
+      background: var(--bg-card);
+      padding: var(--space-md);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+    }
+
+    .quota-stat-value {
+      font-size: var(--text-xl);
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: var(--space-xs);
+    }
+
+    .quota-stat-label {
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .quota-progress-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: var(--space-sm);
+    }
+
+    .quota-progress-fill {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.3s;
+      border-radius: 3px;
+    }
+
+    .quota-progress-fill.warning {
+      background: #f59e0b;
+    }
+
+    .quota-progress-fill.danger {
+      background: var(--danger);
+    }
   </style>
 </head>
 <body>
@@ -143,6 +210,37 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg);">
       <h1 style="margin: 0;">Upload Movie</h1>
       <a href="/batch-upload.html" class="btn btn-secondary">Switch to Batch Upload</a>
+    </div>
+
+    <!-- Quota Display Card -->
+    <div class="quota-card" id="quota-card" style="display: none;">
+      <div class="quota-header">
+        <h3 style="margin: 0; font-size: var(--text-lg);">📊 Your Upload Quota</h3>
+        <span id="quota-status" style="font-size: var(--text-sm); color: var(--text-muted);"></span>
+      </div>
+      
+      <div class="quota-stats">
+        <div class="quota-stat">
+          <div class="quota-stat-value" id="quota-remaining">--</div>
+          <div class="quota-stat-label">Remaining Storage</div>
+        </div>
+        <div class="quota-stat">
+          <div class="quota-stat-value" id="quota-used">--</div>
+          <div class="quota-stat-label">Used Storage</div>
+        </div>
+        <div class="quota-stat">
+          <div class="quota-stat-value" id="quota-uploads-today">--</div>
+          <div class="quota-stat-label">Uploads Today</div>
+        </div>
+        <div class="quota-stat">
+          <div class="quota-stat-value" id="quota-uploads-remaining">--</div>
+          <div class="quota-stat-label">Uploads Remaining</div>
+        </div>
+      </div>
+
+      <div class="quota-progress-bar">
+        <div class="quota-progress-fill" id="quota-progress-fill" style="width: 0%"></div>
+      </div>
     </div>
 
     <div class="upload-card">
@@ -255,6 +353,64 @@
   <script src="/js/utils.js"></script>
   <script>
     requireAuth();
+
+    // Quota Display Elements
+    const quotaCard = document.getElementById('quota-card');
+    const quotaStatus = document.getElementById('quota-status');
+    const quotaRemaining = document.getElementById('quota-remaining');
+    const quotaUsed = document.getElementById('quota-used');
+    const quotaUploadsToday = document.getElementById('quota-uploads-today');
+    const quotaUploadsRemaining = document.getElementById('quota-uploads-remaining');
+    const quotaProgressFill = document.getElementById('quota-progress-fill');
+
+    // Fetch and display quota information
+    async function loadQuotaInfo() {
+      try {
+        const data = await fetchAPI('/upload/quota');
+        if (data.success && data.quota) {
+          const quota = data.quota;
+          
+          // Show quota card
+          quotaCard.style.display = 'block';
+          
+          // Update values
+          quotaRemaining.textContent = `${quota.quota.remainingGB} GB`;
+          quotaUsed.textContent = `${quota.quota.usedGB} GB / ${quota.quota.totalGB} GB`;
+          quotaUploadsToday.textContent = quota.daily.uploadedToday;
+          quotaUploadsRemaining.textContent = quota.daily.remainingToday;
+          
+          // Update progress bar
+          const percentage = parseFloat(quota.quota.percentageUsed);
+          quotaProgressFill.style.width = `${Math.min(percentage, 100)}%`;
+          
+          // Color coding for quota
+          if (percentage >= 90) {
+            quotaProgressFill.classList.add('danger');
+            quotaStatus.textContent = '⚠️ Almost Full';
+            quotaStatus.style.color = 'var(--danger)';
+          } else if (percentage >= 75) {
+            quotaProgressFill.classList.add('warning');
+            quotaStatus.textContent = '⚡ Running Low';
+            quotaStatus.style.color = '#f59e0b';
+          } else {
+            quotaStatus.textContent = '✓ Healthy';
+            quotaStatus.style.color = 'var(--success)';
+          }
+          
+          // Warn if daily limit reached
+          if (quota.daily.remainingToday === 0) {
+            showStatus('Daily upload limit reached. Please try again tomorrow.', 'error');
+            uploadBtn.disabled = true;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load quota info:', error);
+        // Don't show error to user, quota is optional feature
+      }
+    }
+
+    // Load quota on page load
+    loadQuotaInfo();
 
     const uploadZone = document.getElementById('upload-zone');
     const fileInput = document.getElementById('file-input');
@@ -493,11 +649,24 @@
 
         // Show success and preview
         showStatus('Upload successful!', 'success');
+        
+        // Update quota display after successful upload
+        await loadQuotaInfo();
+        
         displayMoviePreview(completeData.movie);
         resetUpload();
 
       } catch (error) {
-        showStatus(error.message, 'error');
+        let errorMessage = error.message;
+        
+        // Special handling for quota errors
+        if (error.message.includes('quota') || error.message.includes('limit')) {
+          errorMessage = `⚠️ ${error.message}`;
+          // Refresh quota display
+          await loadQuotaInfo();
+        }
+        
+        showStatus(errorMessage, 'error');
         resetUpload();
       }
     };

@@ -1,19 +1,22 @@
 /**
  * Authentication Routes
- * Handles user registration and login
+ * Handles user registration and login with enhanced security
  */
 
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../database/db');
+const { isValidUsername, isValidPassword, isWeakPassword, sanitizeString } = require('../helpers/validation');
 
 const router = express.Router();
 
 // Register new user
 router.post('/register', async (req, res, next) => {
+  const ipAddress = req.ip || req.connection.remoteAddress;
+  
   try {
-    const { username, password } = req.body;
+    const { username, password, email } = req.body;
 
     // Validation
     if (!username || !password) {
@@ -23,22 +26,38 @@ router.post('/register', async (req, res, next) => {
       });
     }
 
-    if (username.length < 3) {
+    // Validate username
+    const usernameValidation = isValidUsername(username);
+    if (!usernameValidation.valid) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Username must be at least 3 characters long' 
+        message: usernameValidation.message 
       });
     }
 
-    if (password.length < 6) {
+    // Validate password
+    const passwordValidation = isValidPassword(password, false); // Not strict for better UX
+    if (!passwordValidation.valid) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Password must be at least 6 characters long' 
+        message: passwordValidation.message 
       });
     }
+
+    // Check for weak passwords
+    if (isWeakPassword(password)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Password is too common. Please choose a stronger password.' 
+      });
+    }
+
+    // Sanitize inputs
+    const cleanUsername = sanitizeString(username);
+    const cleanEmail = email ? sanitizeString(email) : null;
 
     // Check if username already exists
-    const existingUser = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+    const existingUser = db.prepare('SELECT id FROM users WHERE username = ?').get(cleanUsername);
     
     if (existingUser) {
       return res.status(400).json({ 
@@ -50,17 +69,24 @@ router.post('/register', async (req, res, next) => {
     // Hash password (cost factor 12)
     const password_hash = await bcrypt.hash(password, 12);
 
-    // Insert user into database
-    const result = db.prepare(
-      'INSERT INTO users (username, password_hash) VALUES (?, ?)'
-    ).run(username, password_hash);
+    // Insert user into database with enhanced fields
+    const result = db.prepare(`
+      INSERT INTO users (username, password_hash, email, upload_quota_gb, daily_upload_limit, is_active)
+      VALUES (?, ?, ?, 100, 10, 1)
+    `).run(cleanUsername, password_hash, cleanEmail);
 
     const userId = result.lastInsertRowid;
 
     // Create default profile for the user
     db.prepare(
       'INSERT INTO profiles (user_id, profile_name, avatar_color) VALUES (?, ?, ?)'
-    ).run(userId, username, '#7c5cfc');
+    ).run(userId, cleanUsername, '#7c5cfc');
+
+    // Record successful registration
+    db.prepare(`
+      INSERT INTO login_attempts (username, ip_address, success)
+      VALUES (?, ?, 1)
+    `).run(cleanUsername, ipAddress);
 
     // Generate JWT token (expires in 7 days)
     const token = jwt.sign(
@@ -75,17 +101,32 @@ router.post('/register', async (req, res, next) => {
       token,
       user: {
         id: userId,
-        username
+        username: cleanUsername,
+        email: cleanEmail
       }
     });
 
   } catch (error) {
+    // Record failed registration attempt
+    try {
+      if (req.body.username) {
+        db.prepare(`
+          INSERT INTO login_attempts (username, ip_address, success)
+          VALUES (?, ?, 0)
+        `).run(sanitizeString(req.body.username), ipAddress);
+      }
+    } catch (logError) {
+      console.error('Failed to log registration attempt:', logError);
+    }
+    
     next(error);
   }
 });
 
 // Login existing user
 router.post('/login', async (req, res, next) => {
+  const ipAddress = req.ip || req.connection.remoteAddress;
+  
   try {
     const { username, password } = req.body;
 
@@ -97,13 +138,45 @@ router.post('/login', async (req, res, next) => {
       });
     }
 
+    const cleanUsername = sanitizeString(username);
+
+    // Check for too many failed attempts from this IP
+    const recentFailures = db.prepare(`
+      SELECT COUNT(*) as count
+      FROM login_attempts
+      WHERE ip_address = ? 
+        AND success = 0 
+        AND attempted_at > datetime('now', '-30 minutes')
+    `).get(ipAddress);
+
+    if (recentFailures.count >= 5) {
+      return res.status(429).json({ 
+        success: false, 
+        message: 'Too many failed login attempts. Please try again in 30 minutes.' 
+      });
+    }
+
     // Find user by username
-    const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+    const user = db.prepare('SELECT * FROM users WHERE username = ?').get(cleanUsername);
 
     if (!user) {
+      // Record failed attempt
+      db.prepare(`
+        INSERT INTO login_attempts (username, ip_address, success)
+        VALUES (?, ?, 0)
+      `).run(cleanUsername, ipAddress);
+      
       return res.status(401).json({ 
         success: false, 
         message: 'Invalid username or password' 
+      });
+    }
+
+    // Check if account is active
+    if (user.is_active === 0) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Account has been deactivated. Please contact administrator.' 
       });
     }
 
@@ -111,11 +184,28 @@ router.post('/login', async (req, res, next) => {
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
 
     if (!isValidPassword) {
+      // Record failed attempt
+      db.prepare(`
+        INSERT INTO login_attempts (username, ip_address, success)
+        VALUES (?, ?, 0)
+      `).run(cleanUsername, ipAddress);
+      
       return res.status(401).json({ 
         success: false, 
         message: 'Invalid username or password' 
       });
     }
+
+    // Update last login time
+    db.prepare(`
+      UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?
+    `).run(user.id);
+
+    // Record successful login
+    db.prepare(`
+      INSERT INTO login_attempts (username, ip_address, success)
+      VALUES (?, ?, 1)
+    `).run(cleanUsername, ipAddress);
 
     // Generate JWT token (expires in 7 days)
     const token = jwt.sign(

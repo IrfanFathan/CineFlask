@@ -11,13 +11,13 @@ const securityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"], // Allow inline scripts for frontend
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"], // Allow inline scripts and Lucide
       scriptSrcAttr: ["'unsafe-inline'"], // Allow inline event handlers
-      styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], // Allow inline styles and Google Fonts
+      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"], // Allow Google Fonts files
       imgSrc: ["'self'", "data:", "https:", "http:"], // Allow external images (posters from OMDB)
       mediaSrc: ["'self'", "blob:"], // Allow self-hosted media and blob URLs
       connectSrc: ["'self'"],
-      fontSrc: ["'self'", "data:"],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
     },

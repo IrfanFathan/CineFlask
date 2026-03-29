@@ -10,7 +10,8 @@ const path = require('path');
 const crypto = require('crypto');
 const db = require('../database/db');
 const authMiddleware = require('../middleware/authMiddleware');
-const { fetchMetadata, fetchMetadataByImdbId, extractYear } = require('../helpers/metadata');
+const { fetchMetadata, fetchMetadataByImdbId, extractYear } = require('../helpers/metadataEnhanced');
+const { canUpload, recordUpload, getUserUploadStats } = require('../helpers/quotaManager');
 
 const router = express.Router();
 
@@ -40,6 +41,19 @@ const upload = multer({
 // All routes require authentication
 router.use(authMiddleware);
 
+// Get user upload quota/stats
+router.get('/quota', (req, res, next) => {
+  try {
+    const stats = getUserUploadStats(req.user.id);
+    res.json({
+      success: true,
+      quota: stats
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Initialize chunked upload
 router.post('/init', (req, res, next) => {
   try {
@@ -63,13 +77,26 @@ router.post('/init', (req, res, next) => {
       });
     }
 
+    // Check upload quota and limits
+    const uploadCheck = canUpload(req.user.id, fileSize);
+    
+    if (!uploadCheck.allowed) {
+      return res.status(403).json({
+        success: false,
+        message: uploadCheck.message,
+        reason: uploadCheck.reason,
+        quota: uploadCheck.stats
+      });
+    }
+
     // Generate unique upload ID
     const uploadId = crypto.randomBytes(16).toString('hex');
 
     res.json({
       success: true,
       uploadId,
-      message: 'Upload initialized'
+      message: 'Upload initialized',
+      quota: uploadCheck.stats
     });
   } catch (error) {
     next(error);
@@ -124,6 +151,8 @@ router.post('/chunk', upload.single('chunk'), (req, res, next) => {
 
 // Complete upload - merge chunks and save to database
 router.post('/complete', async (req, res, next) => {
+  const ipAddress = req.ip || req.connection.remoteAddress;
+  
   try {
     const { uploadId, filename, totalChunks, title, imdbId } = req.body;
 
@@ -183,15 +212,29 @@ router.post('/complete', async (req, res, next) => {
     const stats = fs.statSync(finalPath);
     console.log(`✓ Final file size: ${stats.size} bytes`);
 
+    // Double-check quota before finalizing
+    const uploadCheck = canUpload(req.user.id, stats.size);
+    if (!uploadCheck.allowed) {
+      // Delete the uploaded file
+      fs.unlinkSync(finalPath);
+      
+      return res.status(403).json({
+        success: false,
+        message: uploadCheck.message,
+        reason: uploadCheck.reason,
+        quota: uploadCheck.stats
+      });
+    }
+
     // Fetch metadata - use IMDb ID if provided, otherwise use title
     let metadata;
     if (imdbId) {
       console.log(`📡 Fetching metadata by IMDb ID: ${imdbId}`);
-      metadata = await fetchMetadataByImdbId(imdbId);
+      metadata = await fetchMetadataByImdbId(imdbId, req.user.id, ipAddress);
     } else {
       const movieTitle = title || basename;
       const year = extractYear(filename);
-      metadata = await fetchMetadata(movieTitle, year);
+      metadata = await fetchMetadata(movieTitle, year, req.user.id, ipAddress);
     }
 
     // Save to database
@@ -199,8 +242,8 @@ router.post('/complete', async (req, res, next) => {
       INSERT INTO movies (
         title, year, description, file_path, file_size,
         poster_url, imdb_id, genre, actors, director, runtime, imdb_rating,
-        language, country, uploaded_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        language, country, uploaded_by, upload_ip
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       metadata.title,
       metadata.year,
@@ -216,17 +259,25 @@ router.post('/complete', async (req, res, next) => {
       metadata.imdb_rating,
       metadata.language,
       metadata.country,
-      req.user.id
+      req.user.id,
+      ipAddress
     );
+
+    // Record upload activity
+    recordUpload(req.user.id, stats.size);
 
     const movie = db.prepare('SELECT * FROM movies WHERE id = ?').get(result.lastInsertRowid);
 
     console.log(`✓ Movie added to database with ID ${movie.id}`);
 
+    // Get updated quota stats
+    const updatedQuota = getUserUploadStats(req.user.id);
+
     res.json({
       success: true,
       message: 'Upload completed successfully',
-      movie
+      movie,
+      quota: updatedQuota
     });
 
   } catch (error) {

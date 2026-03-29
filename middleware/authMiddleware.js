@@ -25,8 +25,8 @@ const authMiddleware = (req, res, next) => {
     // Verify token and decode payload
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Check if user still exists in database (handles DB wipes)
-    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(decoded.id);
+    // Check if user still exists and is active
+    const user = db.prepare('SELECT id, is_active, is_admin FROM users WHERE id = ?').get(decoded.id);
     if (!user) {
       return res.status(401).json({ 
         success: false, 
@@ -34,8 +34,18 @@ const authMiddleware = (req, res, next) => {
       });
     }
 
+    if (user.is_active === 0) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Account has been deactivated. Please contact administrator.' 
+      });
+    }
+
     // Attach user data to request object for use in routes
-    req.user = decoded;
+    req.user = {
+      ...decoded,
+      is_admin: user.is_admin === 1
+    };
 
     next();
   } catch (error) {
@@ -62,7 +72,7 @@ const authMiddleware = (req, res, next) => {
 
 /**
  * Admin-only middleware
- * Requires authentication first, then checks if user is admin (first user)
+ * Requires authentication first, then checks if user is admin
  */
 const requireAdmin = (req, res, next) => {
   try {
@@ -74,17 +84,18 @@ const requireAdmin = (req, res, next) => {
       });
     }
 
-    // Get the first user ID (admin)
+    // Check if user has admin flag or is the first user
+    const user = db.prepare('SELECT is_admin FROM users WHERE id = ?').get(req.user.id);
     const firstUser = db.prepare('SELECT id FROM users ORDER BY id ASC LIMIT 1').get();
     
-    if (!firstUser || req.user.id !== firstUser.id) {
+    if (user && (user.is_admin === 1 || req.user.id === firstUser.id)) {
+      next();
+    } else {
       return res.status(403).json({
         success: false,
         message: 'Admin access required'
       });
     }
-
-    next();
   } catch (error) {
     console.error('Admin check error:', error);
     return res.status(500).json({
