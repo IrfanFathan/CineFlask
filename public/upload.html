@@ -602,13 +602,19 @@
           formData.append('chunkIndex', i);
           formData.append('totalChunks', totalChunks);
 
-          await fetch('/api/upload/chunk', {
+          const chunkResponse = await fetch('/api/upload/chunk', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${getToken()}`
             },
             body: formData
           });
+
+          // Check if chunk upload succeeded
+          if (!chunkResponse.ok) {
+            const errorData = await chunkResponse.json().catch(() => ({ message: 'Chunk upload failed' }));
+            throw new Error(errorData.message || `Failed to upload chunk ${i + 1}`);
+          }
 
           const percent = ((i + 1) / totalChunks) * 100;
           progressBar.style.width = percent + '%';
