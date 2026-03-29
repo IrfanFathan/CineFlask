@@ -13,6 +13,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="/css/style.css">
+  
+  <!-- Accessibility utilities -->
+  <script src="/js/a11y.js" defer></script>
   <style>
     body {
       background: #000;
@@ -256,39 +259,73 @@
       font-size: 1.2em;
       font-family: Arial, sans-serif;
     }
+
+    /* Video loading overlay */
+    .video-loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 20;
+    }
+
+    .spinner-lg {
+      width: 48px;
+      height: 48px;
+      border-width: 4px;
+    }
   </style>
 </head>
 <body>
-  <div class="player-container" id="player-container">
-    <video id="video-player" playsinline width="1920" height="1080"></video>
+  <!-- Skip link for keyboard users -->
+  <a href="#video-player" class="skip-link">Skip to video player</a>
+  
+  <!-- Screen reader announcements -->
+  <div id="sr-announcements" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+  
+  <div class="player-container" id="player-container" role="application" aria-label="Video player">
+    <video id="video-player" playsinline width="1920" height="1080" aria-label="Video content"></video>
+    
+    <!-- Video loading overlay -->
+    <div id="video-loading" class="video-loading-overlay" style="display: none;" aria-hidden="true">
+      <div class="spinner spinner-lg"></div>
+      <span class="sr-only">Loading video...</span>
+    </div>
 
-    <button class="btn btn-secondary back-button-player" id="back-btn" onclick="goBack()">
+    <button class="btn btn-secondary back-button-player" id="back-btn" onclick="goBack()" aria-label="Go back to movie details">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
         <path d="m15 18-6-6 6-6"></path>
       </svg>
       Back
     </button>
 
-    <!-- Resume Toast -->
-    <div id="resume-toast" class="resume-toast" style="display: none;">
-      <h3>Resume Watching?</h3>
+    <!-- Resume Toast (accessible dialog) -->
+    <div id="resume-toast" class="resume-toast" style="display: none;" role="dialog" aria-labelledby="resume-title" aria-describedby="resume-time" aria-modal="true">
+      <h3 id="resume-title">Resume Watching?</h3>
       <p id="resume-time"></p>
       <div class="resume-toast-buttons">
-        <button class="btn btn-primary" onclick="resumePlayback()">Resume</button>
+        <button class="btn btn-primary" onclick="resumePlayback()" autofocus>Resume</button>
         <button class="btn btn-secondary" onclick="startOver()">Start Over</button>
       </div>
     </div>
 
     <!-- Player Controls -->
-    <div class="player-controls" id="player-controls">
-      <div class="seek-bar" id="seek-bar">
+    <div class="player-controls" id="player-controls" role="toolbar" aria-label="Video playback controls">
+      <!-- Seek bar with proper accessibility -->
+      <div class="seek-bar" id="seek-bar" role="slider" aria-label="Video progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0:00 of 0:00" tabindex="0">
         <div class="seek-bar-fill" id="seek-bar-fill">
           <div class="seek-bar-thumb"></div>
         </div>
       </div>
 
       <div class="controls-row">
-        <button class="play-pause-btn" id="play-pause-btn" aria-label="Play/Pause">
+        <button class="play-pause-btn" id="play-pause-btn" aria-label="Play" aria-pressed="false">
           <svg id="play-icon" width="32" height="32" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M8 5v14l11-7z"/>
           </svg>
@@ -297,25 +334,30 @@
           </svg>
         </button>
 
-        <div class="time-display" id="time-display">0:00 / 0:00</div>
+        <div class="time-display" id="time-display" aria-live="off">0:00 / 0:00</div>
 
         <div class="volume-control">
-          <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07M19.07 5.93a10 10 0 0 1 0 14.14"/>
-          </svg>
-          <div class="volume-slider" id="volume-slider">
+          <button class="play-pause-btn" id="mute-btn" aria-label="Mute" aria-pressed="false">
+            <svg id="volume-icon" width="20" height="20" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07M19.07 5.93a10 10 0 0 1 0 14.14"/>
+            </svg>
+            <svg id="mute-icon" width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style="display: none;" aria-hidden="true">
+              <path d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6"/>
+            </svg>
+          </button>
+          <div class="volume-slider" id="volume-slider" role="slider" aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" tabindex="0">
             <div class="volume-slider-fill" id="volume-slider-fill"></div>
           </div>
         </div>
 
-        <button class="play-pause-btn" id="settings-btn" title="Settings" aria-label="Settings">
+        <button class="play-pause-btn" id="settings-btn" aria-label="Settings" aria-haspopup="menu" aria-expanded="false">
           <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
           </svg>
         </button>
 
-        <button class="play-pause-btn fullscreen-btn" id="fullscreen-btn" aria-label="Fullscreen">
+        <button class="play-pause-btn fullscreen-btn" id="fullscreen-btn" aria-label="Enter fullscreen" aria-pressed="false">
           <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
           </svg>
@@ -323,74 +365,81 @@
       </div>
     </div>
 
-    <!-- Settings Menu -->
-    <div class="settings-menu" id="settings-menu">
+    <!-- Settings Menu (accessible menu) -->
+    <div class="settings-menu" id="settings-menu" role="menu" aria-label="Player settings">
       <!-- Playback Speed -->
-      <div class="settings-menu-section">
-        <div class="settings-menu-title">Playback Speed</div>
-        <div class="settings-option" data-speed="0.25">
+      <div class="settings-menu-section" role="group" aria-labelledby="speed-title">
+        <div class="settings-menu-title" id="speed-title">Playback Speed</div>
+        <div class="settings-option" data-speed="0.25" role="menuitemradio" aria-checked="false" tabindex="-1">
           0.25x
-          <span class="checkmark">✓</span>
+          <span class="checkmark" aria-hidden="true">&#10003;</span>
         </div>
-        <div class="settings-option" data-speed="0.5">
+        <div class="settings-option" data-speed="0.5" role="menuitemradio" aria-checked="false" tabindex="-1">
           0.5x
-          <span class="checkmark">✓</span>
+          <span class="checkmark" aria-hidden="true">&#10003;</span>
         </div>
-        <div class="settings-option" data-speed="0.75">
+        <div class="settings-option" data-speed="0.75" role="menuitemradio" aria-checked="false" tabindex="-1">
           0.75x
-          <span class="checkmark">✓</span>
+          <span class="checkmark" aria-hidden="true">&#10003;</span>
         </div>
-        <div class="settings-option active" data-speed="1">
+        <div class="settings-option active" data-speed="1" role="menuitemradio" aria-checked="true" tabindex="0">
           Normal
-          <span class="checkmark">✓</span>
+          <span class="checkmark" aria-hidden="true">&#10003;</span>
         </div>
-        <div class="settings-option" data-speed="1.25">
+        <div class="settings-option" data-speed="1.25" role="menuitemradio" aria-checked="false" tabindex="-1">
           1.25x
-          <span class="checkmark">✓</span>
+          <span class="checkmark" aria-hidden="true">&#10003;</span>
         </div>
-        <div class="settings-option" data-speed="1.5">
+        <div class="settings-option" data-speed="1.5" role="menuitemradio" aria-checked="false" tabindex="-1">
           1.5x
-          <span class="checkmark">✓</span>
+          <span class="checkmark" aria-hidden="true">&#10003;</span>
         </div>
-        <div class="settings-option" data-speed="1.75">
+        <div class="settings-option" data-speed="1.75" role="menuitemradio" aria-checked="false" tabindex="-1">
           1.75x
-          <span class="checkmark">✓</span>
+          <span class="checkmark" aria-hidden="true">&#10003;</span>
         </div>
-        <div class="settings-option" data-speed="2">
+        <div class="settings-option" data-speed="2" role="menuitemradio" aria-checked="false" tabindex="-1">
           2x
-          <span class="checkmark">✓</span>
+          <span class="checkmark" aria-hidden="true">&#10003;</span>
         </div>
       </div>
 
       <!-- Subtitles -->
-      <div class="settings-menu-section">
-        <div class="settings-menu-title">Subtitles</div>
+      <div class="settings-menu-section" role="group" aria-labelledby="subtitle-title">
+        <div class="settings-menu-title" id="subtitle-title">Subtitles</div>
         <div id="subtitle-options">
-          <div class="settings-option active" data-subtitle="off">
+          <div class="settings-option active" data-subtitle="off" role="menuitemradio" aria-checked="true" tabindex="0">
             Off
-            <span class="checkmark">✓</span>
+            <span class="checkmark" aria-hidden="true">&#10003;</span>
           </div>
           <!-- Subtitle tracks will be loaded dynamically -->
         </div>
       </div>
 
       <!-- Audio Tracks -->
-      <div class="settings-menu-section" id="audio-section" style="display: none;">
-        <div class="settings-menu-title">Audio Track</div>
+      <div class="settings-menu-section" id="audio-section" style="display: none;" role="group" aria-labelledby="audio-title">
+        <div class="settings-menu-title" id="audio-title">Audio Track</div>
         <div id="audio-options">
           <!-- Audio tracks will be loaded dynamically -->
         </div>
       </div>
 
       <!-- Quality (placeholder for future transcoding) -->
-      <div class="settings-menu-section" style="display: none;">
-        <div class="settings-menu-title">Quality</div>
-        <div class="settings-option active">
+      <div class="settings-menu-section" style="display: none;" role="group" aria-labelledby="quality-title">
+        <div class="settings-menu-title" id="quality-title">Quality</div>
+        <div class="settings-option active" role="menuitemradio" aria-checked="true" tabindex="0">
           Auto
-          <span class="checkmark">✓</span>
+          <span class="checkmark" aria-hidden="true">&#10003;</span>
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Keyboard shortcuts help (hidden, for screen readers) -->
+  <div class="sr-only" id="keyboard-help">
+    Keyboard shortcuts: Space to play or pause, Left arrow to rewind 10 seconds, Right arrow to fast forward 10 seconds, 
+    Up arrow to increase volume, Down arrow to decrease volume, M to mute, F for fullscreen, C to toggle subtitles, 
+    S for settings, Comma and Period to adjust playback speed.
   </div>
 
   <script src="/js/utils.js"></script>
@@ -419,6 +468,11 @@
     const playerContainer = document.getElementById('player-container');
     const settingsBtn = document.getElementById('settings-btn');
     const settingsMenu = document.getElementById('settings-menu');
+    const muteBtn = document.getElementById('mute-btn');
+    const volumeIcon = document.getElementById('volume-icon');
+    const muteIcon = document.getElementById('mute-icon');
+    const videoLoading = document.getElementById('video-loading');
+    const srAnnouncements = document.getElementById('sr-announcements');
 
     let savedProgress = null;
     let controlsTimeout = null;
@@ -426,8 +480,40 @@
     let subtitleTracks = [];
     let currentSubtitleTrack = null;
 
+    // Screen reader announcement helper
+    function announce(message) {
+      if (srAnnouncements) {
+        srAnnouncements.textContent = message;
+        // Clear after a short delay to allow re-announcement of same message
+        setTimeout(() => { srAnnouncements.textContent = ''; }, 1000);
+      }
+    }
+
+    // Show/hide video loading state
+    function showLoading(show) {
+      if (videoLoading) {
+        videoLoading.style.display = show ? 'flex' : 'none';
+        videoLoading.setAttribute('aria-hidden', !show);
+      }
+    }
+
+    // Update ARIA attributes for seek bar
+    function updateSeekBarAria() {
+      const percent = Math.round((video.currentTime / video.duration) * 100) || 0;
+      seekBar.setAttribute('aria-valuenow', percent);
+      seekBar.setAttribute('aria-valuetext', `${formatTime(video.currentTime)} of ${formatTime(video.duration)}`);
+    }
+
+    // Update ARIA attributes for volume slider
+    function updateVolumeAria() {
+      const percent = Math.round(video.volume * 100);
+      volumeSlider.setAttribute('aria-valuenow', percent);
+      volumeSlider.setAttribute('aria-valuetext', video.muted ? 'Muted' : `${percent}%`);
+    }
+
     // Load video
     video.src = `/api/stream/${movieId}`;
+    showLoading(true);
 
     // Load subtitles
     async function loadSubtitles() {
@@ -437,11 +523,11 @@
           subtitleTracks = data.subtitles;
           const subtitleOptions = document.getElementById('subtitle-options');
           
-          // Keep "Off" option
+          // Keep "Off" option with proper ARIA
           subtitleOptions.innerHTML = `
-            <div class="settings-option active" data-subtitle="off">
+            <div class="settings-option active" data-subtitle="off" role="menuitemradio" aria-checked="true" tabindex="0">
               Off
-              <span class="checkmark">✓</span>
+              <span class="checkmark" aria-hidden="true">&#10003;</span>
             </div>
           `;
           
@@ -450,10 +536,13 @@
             const option = document.createElement('div');
             option.className = 'settings-option';
             option.setAttribute('data-subtitle', index);
+            option.setAttribute('role', 'menuitemradio');
+            option.setAttribute('aria-checked', 'false');
+            option.setAttribute('tabindex', '-1');
             option.innerHTML = `
               ${sub.label} (${sub.language})
-              ${sub.is_default ? '<span class="badge-label"> • Default</span>' : ''}
-              <span class="checkmark">✓</span>
+              ${sub.is_default ? '<span class="badge-label"> - Default</span>' : ''}
+              <span class="checkmark" aria-hidden="true">&#10003;</span>
             `;
             subtitleOptions.appendChild(option);
             
@@ -466,7 +555,11 @@
             if (sub.is_default) {
               track.default = true;
               option.classList.add('active');
+              option.setAttribute('aria-checked', 'true');
+              option.setAttribute('tabindex', '0');
               subtitleOptions.querySelector('[data-subtitle="off"]').classList.remove('active');
+              subtitleOptions.querySelector('[data-subtitle="off"]').setAttribute('aria-checked', 'false');
+              subtitleOptions.querySelector('[data-subtitle="off"]').setAttribute('tabindex', '-1');
               currentSubtitleTrack = index;
             }
             video.appendChild(track);
@@ -480,6 +573,7 @@
     // Load audio tracks
     function loadAudioTracks() {
       video.addEventListener('loadedmetadata', () => {
+        showLoading(false);
         if (video.audioTracks && video.audioTracks.length > 1) {
           const audioSection = document.getElementById('audio-section');
           const audioOptions = document.getElementById('audio-options');
@@ -491,9 +585,12 @@
             const option = document.createElement('div');
             option.className = 'settings-option' + (track.enabled ? ' active' : '');
             option.setAttribute('data-audio', i);
+            option.setAttribute('role', 'menuitemradio');
+            option.setAttribute('aria-checked', track.enabled ? 'true' : 'false');
+            option.setAttribute('tabindex', track.enabled ? '0' : '-1');
             option.innerHTML = `
               ${track.label || `Track ${i + 1}`} ${track.language ? `(${track.language})` : ''}
-              <span class="checkmark">✓</span>
+              <span class="checkmark" aria-hidden="true">&#10003;</span>
             `;
             audioOptions.appendChild(option);
           }
@@ -549,59 +646,208 @@
     video.addEventListener('play', () => {
       playIcon.style.display = 'none';
       pauseIcon.style.display = 'block';
+      playPauseBtn.setAttribute('aria-label', 'Pause');
+      playPauseBtn.setAttribute('aria-pressed', 'true');
+      announce('Playing');
     });
 
     video.addEventListener('pause', () => {
       playIcon.style.display = 'block';
       pauseIcon.style.display = 'none';
+      playPauseBtn.setAttribute('aria-label', 'Play');
+      playPauseBtn.setAttribute('aria-pressed', 'false');
+      announce('Paused');
     });
+
+    // Video loading/buffering states
+    video.addEventListener('waiting', () => showLoading(true));
+    video.addEventListener('canplay', () => showLoading(false));
+    video.addEventListener('playing', () => showLoading(false));
 
     // Click video to play/pause
     video.onclick = () => playPauseBtn.click();
 
-    // Seek bar
+    // Seek bar click
     seekBar.onclick = (e) => {
       const rect = seekBar.getBoundingClientRect();
       const percent = (e.clientX - rect.left) / rect.width;
       video.currentTime = percent * video.duration;
+      announce(`Seeking to ${formatTime(video.currentTime)}`);
     };
+
+    // Seek bar keyboard support
+    seekBar.addEventListener('keydown', (e) => {
+      const step = video.duration * 0.05; // 5% of duration
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          video.currentTime = Math.max(0, video.currentTime - step);
+          announce(`${formatTime(video.currentTime)}`);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          video.currentTime = Math.min(video.duration, video.currentTime + step);
+          announce(`${formatTime(video.currentTime)}`);
+          break;
+        case 'Home':
+          e.preventDefault();
+          video.currentTime = 0;
+          announce('Beginning of video');
+          break;
+        case 'End':
+          e.preventDefault();
+          video.currentTime = video.duration;
+          announce('End of video');
+          break;
+      }
+    });
 
     video.addEventListener('timeupdate', () => {
       const percent = (video.currentTime / video.duration) * 100;
       seekBarFill.style.width = percent + '%';
       timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+      updateSeekBarAria();
     });
 
-    // Volume
+    // Volume click
     volumeSlider.onclick = (e) => {
       const rect = volumeSlider.getBoundingClientRect();
       const percent = (e.clientX - rect.left) / rect.width;
       video.volume = Math.max(0, Math.min(1, percent));
+      video.muted = false;
       volumeSliderFill.style.width = (percent * 100) + '%';
+      updateVolumeAria();
+      updateMuteIcon();
+      announce(`Volume ${Math.round(video.volume * 100)}%`);
+    };
+
+    // Volume slider keyboard support
+    volumeSlider.addEventListener('keydown', (e) => {
+      switch (e.key) {
+        case 'ArrowLeft':
+        case 'ArrowDown':
+          e.preventDefault();
+          video.volume = Math.max(0, video.volume - 0.1);
+          video.muted = false;
+          volumeSliderFill.style.width = (video.volume * 100) + '%';
+          updateVolumeAria();
+          updateMuteIcon();
+          announce(`Volume ${Math.round(video.volume * 100)}%`);
+          break;
+        case 'ArrowRight':
+        case 'ArrowUp':
+          e.preventDefault();
+          video.volume = Math.min(1, video.volume + 0.1);
+          video.muted = false;
+          volumeSliderFill.style.width = (video.volume * 100) + '%';
+          updateVolumeAria();
+          updateMuteIcon();
+          announce(`Volume ${Math.round(video.volume * 100)}%`);
+          break;
+      }
+    });
+
+    // Mute button
+    function updateMuteIcon() {
+      if (video.muted || video.volume === 0) {
+        volumeIcon.style.display = 'none';
+        muteIcon.style.display = 'block';
+        muteBtn.setAttribute('aria-label', 'Unmute');
+        muteBtn.setAttribute('aria-pressed', 'true');
+      } else {
+        volumeIcon.style.display = 'block';
+        muteIcon.style.display = 'none';
+        muteBtn.setAttribute('aria-label', 'Mute');
+        muteBtn.setAttribute('aria-pressed', 'false');
+      }
+    }
+
+    muteBtn.onclick = () => {
+      video.muted = !video.muted;
+      volumeSliderFill.style.width = video.muted ? '0%' : (video.volume * 100) + '%';
+      updateMuteIcon();
+      updateVolumeAria();
+      announce(video.muted ? 'Muted' : 'Unmuted');
     };
 
     video.volume = 1;
     volumeSliderFill.style.width = '100%';
+    updateVolumeAria();
 
     // Fullscreen
     fullscreenBtn.onclick = () => {
       if (!document.fullscreenElement) {
         playerContainer.requestFullscreen();
+        fullscreenBtn.setAttribute('aria-label', 'Exit fullscreen');
+        fullscreenBtn.setAttribute('aria-pressed', 'true');
+        announce('Entered fullscreen');
       } else {
         document.exitFullscreen();
+        fullscreenBtn.setAttribute('aria-label', 'Enter fullscreen');
+        fullscreenBtn.setAttribute('aria-pressed', 'false');
+        announce('Exited fullscreen');
       }
     };
+
+    // Update fullscreen button when exiting via Escape
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+        fullscreenBtn.setAttribute('aria-label', 'Enter fullscreen');
+        fullscreenBtn.setAttribute('aria-pressed', 'false');
+      }
+    });
 
     // Settings menu toggle
     settingsBtn.onclick = (e) => {
       e.stopPropagation();
-      settingsMenu.classList.toggle('active');
+      const isOpen = settingsMenu.classList.toggle('active');
+      settingsBtn.setAttribute('aria-expanded', isOpen);
+      if (isOpen) {
+        // Focus first focusable item
+        const firstItem = settingsMenu.querySelector('[tabindex="0"]');
+        if (firstItem) firstItem.focus();
+        announce('Settings menu opened');
+      } else {
+        announce('Settings menu closed');
+      }
     };
 
     // Close settings when clicking outside
     document.addEventListener('click', (e) => {
       if (!settingsMenu.contains(e.target) && e.target !== settingsBtn) {
         settingsMenu.classList.remove('active');
+        settingsBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // Settings menu keyboard navigation
+    settingsMenu.addEventListener('keydown', (e) => {
+      const items = [...settingsMenu.querySelectorAll('[role="menuitemradio"]')];
+      const currentIndex = items.findIndex(item => item === document.activeElement);
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          const nextIndex = (currentIndex + 1) % items.length;
+          items[nextIndex].focus();
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          const prevIndex = (currentIndex - 1 + items.length) % items.length;
+          items[prevIndex].focus();
+          break;
+        case 'Escape':
+          e.preventDefault();
+          settingsMenu.classList.remove('active');
+          settingsBtn.setAttribute('aria-expanded', 'false');
+          settingsBtn.focus();
+          announce('Settings menu closed');
+          break;
+        case 'Tab':
+          // Close menu when tabbing out
+          settingsMenu.classList.remove('active');
+          settingsBtn.setAttribute('aria-expanded', 'false');
+          break;
       }
     });
 
@@ -611,9 +857,17 @@
         const speed = parseFloat(option.getAttribute('data-speed'));
         video.playbackRate = speed;
         
-        // Update UI
-        document.querySelectorAll('[data-speed]').forEach(o => o.classList.remove('active'));
+        // Update UI and ARIA
+        document.querySelectorAll('[data-speed]').forEach(o => {
+          o.classList.remove('active');
+          o.setAttribute('aria-checked', 'false');
+          o.setAttribute('tabindex', '-1');
+        });
         option.classList.add('active');
+        option.setAttribute('aria-checked', 'true');
+        option.setAttribute('tabindex', '0');
+        
+        announce(`Playback speed ${speed}x`);
       };
     });
 
@@ -632,13 +886,21 @@
         if (trackIndex !== 'off') {
           video.textTracks[parseInt(trackIndex)].mode = 'showing';
           currentSubtitleTrack = parseInt(trackIndex);
+          announce(`Subtitles: ${subtitleTracks[currentSubtitleTrack]?.label || 'enabled'}`);
         } else {
           currentSubtitleTrack = null;
+          announce('Subtitles off');
         }
         
-        // Update UI
-        document.querySelectorAll('[data-subtitle]').forEach(o => o.classList.remove('active'));
+        // Update UI and ARIA
+        document.querySelectorAll('[data-subtitle]').forEach(o => {
+          o.classList.remove('active');
+          o.setAttribute('aria-checked', 'false');
+          o.setAttribute('tabindex', '-1');
+        });
         subtitleOption.classList.add('active');
+        subtitleOption.setAttribute('aria-checked', 'true');
+        subtitleOption.setAttribute('tabindex', '0');
       }
     });
 
@@ -656,9 +918,18 @@
         // Enable selected track
         video.audioTracks[trackIndex].enabled = true;
         
-        // Update UI
-        document.querySelectorAll('[data-audio]').forEach(o => o.classList.remove('active'));
+        // Update UI and ARIA
+        document.querySelectorAll('[data-audio]').forEach(o => {
+          o.classList.remove('active');
+          o.setAttribute('aria-checked', 'false');
+          o.setAttribute('tabindex', '-1');
+        });
         audioOption.classList.add('active');
+        audioOption.setAttribute('aria-checked', 'true');
+        audioOption.setAttribute('tabindex', '0');
+        
+        const trackLabel = video.audioTracks[trackIndex].label || `Track ${trackIndex + 1}`;
+        announce(`Audio track: ${trackLabel}`);
       }
     });
 
@@ -724,26 +995,47 @@
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
+      // Don't handle if settings menu is open (it has its own handlers)
+      if (settingsMenu.classList.contains('active') && ['ArrowUp', 'ArrowDown', 'Escape'].includes(e.key)) {
+        return;
+      }
+      
+      // Don't handle if focus is on an input or inside a dialog
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
       switch (e.key) {
         case ' ':
           e.preventDefault();
           playPauseBtn.click();
           break;
         case 'ArrowLeft':
+          e.preventDefault();
           video.currentTime = Math.max(0, video.currentTime - 10);
+          announce(`Rewound to ${formatTime(video.currentTime)}`);
           break;
         case 'ArrowRight':
+          e.preventDefault();
           video.currentTime = Math.min(video.duration, video.currentTime + 10);
+          announce(`Forwarded to ${formatTime(video.currentTime)}`);
           break;
         case 'ArrowUp':
           e.preventDefault();
           video.volume = Math.min(1, video.volume + 0.1);
+          video.muted = false;
           volumeSliderFill.style.width = (video.volume * 100) + '%';
+          updateVolumeAria();
+          updateMuteIcon();
+          announce(`Volume ${Math.round(video.volume * 100)}%`);
           break;
         case 'ArrowDown':
           e.preventDefault();
           video.volume = Math.max(0, video.volume - 0.1);
           volumeSliderFill.style.width = (video.volume * 100) + '%';
+          updateVolumeAria();
+          updateMuteIcon();
+          announce(`Volume ${Math.round(video.volume * 100)}%`);
           break;
         case 'f':
         case 'F':
@@ -753,12 +1045,14 @@
           if (document.fullscreenElement) {
             document.exitFullscreen();
           }
-          settingsMenu.classList.remove('active');
+          if (settingsMenu.classList.contains('active')) {
+            settingsMenu.classList.remove('active');
+            settingsBtn.setAttribute('aria-expanded', 'false');
+          }
           break;
         case 'm':
         case 'M':
-          video.muted = !video.muted;
-          volumeSliderFill.style.width = video.muted ? '0%' : (video.volume * 100) + '%';
+          muteBtn.click();
           break;
         case 's':
         case 'S':
@@ -780,8 +1074,18 @@
           const currentSpeed = video.playbackRate;
           const newSpeed = Math.max(0.25, currentSpeed - 0.25);
           video.playbackRate = newSpeed;
-          document.querySelector(`[data-speed="${newSpeed}"]`)?.classList.add('active');
-          document.querySelector(`[data-speed="${currentSpeed}"]`)?.classList.remove('active');
+          document.querySelectorAll('[data-speed]').forEach(o => {
+            o.classList.remove('active');
+            o.setAttribute('aria-checked', 'false');
+            o.setAttribute('tabindex', '-1');
+          });
+          const newSpeedOption = document.querySelector(`[data-speed="${newSpeed}"]`);
+          if (newSpeedOption) {
+            newSpeedOption.classList.add('active');
+            newSpeedOption.setAttribute('aria-checked', 'true');
+            newSpeedOption.setAttribute('tabindex', '0');
+          }
+          announce(`Speed ${newSpeed}x`);
           break;
         case '>':
         case '.':
@@ -789,8 +1093,22 @@
           const currSpeed = video.playbackRate;
           const incSpeed = Math.min(2, currSpeed + 0.25);
           video.playbackRate = incSpeed;
-          document.querySelector(`[data-speed="${incSpeed}"]`)?.classList.add('active');
-          document.querySelector(`[data-speed="${currSpeed}"]`)?.classList.remove('active');
+          document.querySelectorAll('[data-speed]').forEach(o => {
+            o.classList.remove('active');
+            o.setAttribute('aria-checked', 'false');
+            o.setAttribute('tabindex', '-1');
+          });
+          const incSpeedOption = document.querySelector(`[data-speed="${incSpeed}"]`);
+          if (incSpeedOption) {
+            incSpeedOption.classList.add('active');
+            incSpeedOption.setAttribute('aria-checked', 'true');
+            incSpeedOption.setAttribute('tabindex', '0');
+          }
+          announce(`Speed ${incSpeed}x`);
+          break;
+        case '?':
+          // Announce keyboard shortcuts help
+          announce(document.getElementById('keyboard-help').textContent);
           break;
       }
     });

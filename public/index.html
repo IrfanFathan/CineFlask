@@ -27,8 +27,11 @@
   </script>
 </head>
 <body>
+  <!-- Skip link for keyboard users -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
   <div class="auth-container">
-    <div class="auth-card">
+    <div class="auth-card" id="main-content" role="main">
       <!-- Logo -->
       <div class="auth-logo">
         <div class="navbar-logo">
@@ -40,27 +43,28 @@
         <p class="auth-tagline">Your private cinema, on any screen.</p>
       </div>
 
-      <!-- Tabs -->
-      <div class="auth-tabs">
-        <button type="button" class="auth-tab active" id="tab-login" onclick="switchTab('login')">
+      <!-- Tabs with proper ARIA -->
+      <div class="auth-tabs" role="tablist" aria-label="Authentication options">
+        <button type="button" class="auth-tab active" id="tab-login" onclick="switchTab('login')" role="tab" aria-selected="true" aria-controls="login-form" tabindex="0">
           Sign In
         </button>
-        <button type="button" class="auth-tab" id="tab-register" onclick="switchTab('register')">
+        <button type="button" class="auth-tab" id="tab-register" onclick="switchTab('register')" role="tab" aria-selected="false" aria-controls="register-form" tabindex="-1">
           Register
         </button>
       </div>
 
       <!-- Login Form -->
-      <form id="login-form" style="display: block;">
+      <form id="login-form" role="tabpanel" aria-labelledby="tab-login" style="display: block;">
         <div class="form-group">
           <label class="form-label" for="login-username">Username</label>
           <input 
             type="text" 
             id="login-username" 
             class="form-input" 
-            placeholder="Enter your username…"
+            placeholder="Enter your username..."
             required
             autocomplete="username"
+            aria-describedby="login-error"
           >
         </div>
 
@@ -70,33 +74,36 @@
             type="password" 
             id="login-password" 
             class="form-input" 
-            placeholder="Enter your password…"
+            placeholder="Enter your password..."
             required
             autocomplete="current-password"
+            aria-describedby="login-error"
           >
         </div>
 
-        <div id="login-error" class="form-error" style="display: none;"></div>
+        <div id="login-error" class="form-error" style="display: none;" role="alert" aria-live="assertive" tabindex="-1"></div>
 
-        <button type="submit" class="btn btn-primary" style="width: 100%;">
+        <button type="submit" class="btn btn-primary" style="width: 100%;" id="login-submit-btn">
           <span id="login-btn-text">Sign In</span>
-          <span id="login-spinner" class="spinner" style="display: none;"></span>
+          <span id="login-spinner" class="spinner" style="display: none;" aria-hidden="true"></span>
         </button>
       </form>
 
       <!-- Register Form -->
-      <form id="register-form" style="display: none;">
+      <form id="register-form" role="tabpanel" aria-labelledby="tab-register" style="display: none;" aria-hidden="true">
         <div class="form-group">
           <label class="form-label" for="register-username">Username</label>
           <input 
             type="text" 
             id="register-username" 
             class="form-input" 
-            placeholder="Choose a username (min 3 characters)…"
+            placeholder="Choose a username (min 3 characters)..."
             required
             autocomplete="username"
             minlength="3"
+            aria-describedby="register-username-hint register-error"
           >
+          <span id="register-username-hint" class="sr-only">Username must be at least 3 characters</span>
         </div>
 
         <div class="form-group">
@@ -105,11 +112,13 @@
             type="password" 
             id="register-password" 
             class="form-input" 
-            placeholder="Choose a password (min 6 characters)…"
+            placeholder="Choose a password (min 6 characters)..."
             required
             autocomplete="new-password"
             minlength="6"
+            aria-describedby="register-password-hint register-error"
           >
+          <span id="register-password-hint" class="sr-only">Password must be at least 6 characters</span>
         </div>
 
         <div class="form-group">
@@ -118,18 +127,19 @@
             type="password" 
             id="register-password-confirm" 
             class="form-input" 
-            placeholder="Re-enter your password…"
+            placeholder="Re-enter your password..."
             required
             autocomplete="new-password"
             minlength="6"
+            aria-describedby="register-error"
           >
         </div>
 
-        <div id="register-error" class="form-error" style="display: none;"></div>
+        <div id="register-error" class="form-error" style="display: none;" role="alert" aria-live="assertive" tabindex="-1"></div>
 
-        <button type="submit" class="btn btn-primary" style="width: 100%;">
+        <button type="submit" class="btn btn-primary" style="width: 100%;" id="register-submit-btn">
           <span id="register-btn-text">Create Account</span>
-          <span id="register-spinner" class="spinner" style="display: none;"></span>
+          <span id="register-spinner" class="spinner" style="display: none;" aria-hidden="true"></span>
         </button>
       </form>
     </div>
@@ -137,6 +147,25 @@
 
   <script src="/js/utils.js"></script>
   <script>
+    // Tab keyboard navigation
+    const tabs = document.querySelectorAll('[role="tab"]');
+    tabs.forEach(tab => {
+      tab.addEventListener('keydown', (e) => {
+        let targetTab;
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+          e.preventDefault();
+          const currentIndex = [...tabs].indexOf(tab);
+          if (e.key === 'ArrowRight') {
+            targetTab = tabs[(currentIndex + 1) % tabs.length];
+          } else {
+            targetTab = tabs[(currentIndex - 1 + tabs.length) % tabs.length];
+          }
+          targetTab.click();
+          targetTab.focus();
+        }
+      });
+    });
+
     // Switch between login and register tabs
     function switchTab(tab) {
       const loginTab = document.getElementById('tab-login');
@@ -146,14 +175,26 @@
 
       if (tab === 'login') {
         loginTab.classList.add('active');
+        loginTab.setAttribute('aria-selected', 'true');
+        loginTab.setAttribute('tabindex', '0');
         registerTab.classList.remove('active');
+        registerTab.setAttribute('aria-selected', 'false');
+        registerTab.setAttribute('tabindex', '-1');
         loginForm.style.display = 'block';
+        loginForm.removeAttribute('aria-hidden');
         registerForm.style.display = 'none';
+        registerForm.setAttribute('aria-hidden', 'true');
       } else {
         registerTab.classList.add('active');
+        registerTab.setAttribute('aria-selected', 'true');
+        registerTab.setAttribute('tabindex', '0');
         loginTab.classList.remove('active');
+        loginTab.setAttribute('aria-selected', 'false');
+        loginTab.setAttribute('tabindex', '-1');
         registerForm.style.display = 'block';
+        registerForm.removeAttribute('aria-hidden');
         loginForm.style.display = 'none';
+        loginForm.setAttribute('aria-hidden', 'true');
       }
 
       // Clear errors
@@ -170,10 +211,13 @@
       const errorDiv = document.getElementById('login-error');
       const btnText = document.getElementById('login-btn-text');
       const spinner = document.getElementById('login-spinner');
+      const submitBtn = document.getElementById('login-submit-btn');
 
       // Show loading
       btnText.style.display = 'none';
       spinner.style.display = 'inline-block';
+      submitBtn.setAttribute('aria-busy', 'true');
+      submitBtn.disabled = true;
       errorDiv.style.display = 'none';
 
       try {
@@ -193,6 +237,10 @@
         errorDiv.style.display = 'block';
         btnText.style.display = 'inline';
         spinner.style.display = 'none';
+        submitBtn.setAttribute('aria-busy', 'false');
+        submitBtn.disabled = false;
+        // Focus the error for screen readers
+        errorDiv.focus();
       }
     });
 
@@ -206,17 +254,21 @@
       const errorDiv = document.getElementById('register-error');
       const btnText = document.getElementById('register-btn-text');
       const spinner = document.getElementById('register-spinner');
+      const submitBtn = document.getElementById('register-submit-btn');
 
       // Validate passwords match
       if (password !== passwordConfirm) {
         errorDiv.textContent = 'Passwords do not match';
         errorDiv.style.display = 'block';
+        errorDiv.focus();
         return;
       }
 
       // Show loading
       btnText.style.display = 'none';
       spinner.style.display = 'inline-block';
+      submitBtn.setAttribute('aria-busy', 'true');
+      submitBtn.disabled = true;
       errorDiv.style.display = 'none';
 
       try {
@@ -236,6 +288,10 @@
         errorDiv.style.display = 'block';
         btnText.style.display = 'inline';
         spinner.style.display = 'none';
+        submitBtn.setAttribute('aria-busy', 'false');
+        submitBtn.disabled = false;
+        // Focus the error for screen readers
+        errorDiv.focus();
       }
     });
   </script>

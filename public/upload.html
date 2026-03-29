@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Upload Movie - CineLocal</title>
+  <meta name="description" content="Upload movies to your CineLocal library">
   
   <!-- Preconnect to Google Fonts for faster loading -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -197,15 +198,22 @@
   </style>
 </head>
 <body>
+  <!-- Skip link -->
+  <a href="#upload-form" class="sr-only focus:not-sr-only" style="position:absolute;top:0;left:0;padding:1rem;background:var(--accent);color:white;z-index:9999;">
+    Skip to upload form
+  </a>
+
   <div class="navbar-spacer"></div>
 
-  <div class="upload-container">
-    <button class="btn btn-secondary back-button-upload" onclick="window.location.href='/home.html'">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="m15 18-6-6 6-6"></path>
-      </svg>
-      Back to Home
-    </button>
+  <main class="upload-container" id="upload-form" role="main">
+    <nav aria-label="Breadcrumb">
+      <button class="btn btn-secondary back-button-upload" onclick="window.location.href='/home.html'" aria-label="Go back to home">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m15 18-6-6 6-6"></path>
+        </svg>
+        Back to Home
+      </button>
+    </nav>
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg);">
       <h1 style="margin: 0;">Upload Movie</h1>
@@ -244,17 +252,17 @@
     </div>
 
     <div class="upload-card">
-      <label for="file-input" class="upload-zone" id="upload-zone">
-        <div class="upload-zone-icon">
-          <svg width="64" height="64" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+      <label for="file-input" class="upload-zone" id="upload-zone" role="button" tabindex="0" aria-describedby="upload-hint">
+        <div class="upload-zone-icon" aria-hidden="true">
+          <svg width="64" height="64" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"></path>
           </svg>
         </div>
         <div class="upload-zone-text">Drop video file here or click to browse</div>
-        <div class="upload-zone-subtext">Supported formats: MP4, MKV, AVI, MOV, WebM (up to 50GB)</div>
+        <div class="upload-zone-subtext" id="upload-hint">Supported formats: MP4, MKV, AVI, MOV, WebM (up to 50GB)</div>
       </label>
 
-      <input type="file" id="file-input" accept="video/*,.mkv,.avi">
+      <input type="file" id="file-input" accept="video/*,.mkv,.avi" aria-label="Select video file">
 
       <!-- Metadata Search Section -->
       <div style="margin-bottom: var(--space-lg); padding: var(--space-lg); border: 1px solid var(--border); border-radius: var(--radius-md); background: rgba(124, 92, 252, 0.05);">
@@ -323,7 +331,7 @@
         </div>
       </div>
 
-      <button class="btn btn-primary" id="upload-btn" style="width: 100%;" disabled>
+      <button class="btn btn-primary" id="upload-btn" style="width: 100%;" disabled aria-describedby="upload-status">
         Select a File to Continue
       </button>
 
@@ -331,14 +339,14 @@
         Cancel Upload
       </button>
 
-      <div class="progress-container" id="progress-container">
+      <div class="progress-container" id="progress-container" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Upload progress">
         <div class="progress-bar-container">
           <div class="progress-bar" id="progress-bar"></div>
         </div>
-        <div class="progress-text" id="progress-text">Preparing upload…</div>
+        <div class="progress-text" id="progress-text" aria-live="polite">Preparing upload…</div>
       </div>
 
-      <div class="status-message" id="status-message"></div>
+      <div class="status-message" id="status-message" id="upload-status" role="alert" aria-live="assertive"></div>
 
       <div class="movie-preview" id="movie-preview">
         <h3 style="margin-bottom: var(--space-md);">Upload Complete!</h3>
@@ -348,9 +356,14 @@
         </button>
       </div>
     </div>
-  </div>
+  </main>
 
   <script src="/js/utils.js"></script>
+  <!-- New components -->
+  <script src="/js/a11y.js"></script>
+  <script src="/js/components/toast.js"></script>
+  <script src="/js/components/modal.js"></script>
+  <script src="/js/components/skeleton.js"></script>
   <script>
     requireAuth();
 
@@ -463,37 +476,54 @@
       const imdbId = imdbIdInput.value.trim();
       
       if (!imdbId) {
-        showToast('Please enter an IMDb ID', 'error');
+        Toast.warning('Please enter an IMDb ID');
         return;
       }
 
       try {
-        fetchMetadataBtn.disabled = true;
-        fetchMetadataBtn.textContent = 'Fetching...';
+        // Use skeleton loading on button
+        if (window.Skeleton) {
+          Skeleton.buttonLoading(fetchMetadataBtn, true, 'Fetching...');
+        } else {
+          fetchMetadataBtn.disabled = true;
+          fetchMetadataBtn.textContent = 'Fetching...';
+        }
 
         const response = await fetchAPI(`/api/metadata/search/imdb/${imdbId}`);
 
         if (response.success && response.metadata) {
           previewMetadata = response.metadata;
           displayMetadataPreview(response.metadata);
-          showToast('Metadata fetched successfully!', 'success');
+          Toast.success('Metadata fetched successfully!');
         } else {
-          showToast('Movie not found with this IMDb ID', 'error');
+          Toast.error('Movie not found with this IMDb ID');
           metadataPreview.style.display = 'none';
         }
       } catch (error) {
         console.error('Metadata fetch error:', error);
-        showToast('Failed to fetch metadata', 'error');
+        Toast.error('Failed to fetch metadata');
         metadataPreview.style.display = 'none';
       } finally {
-        fetchMetadataBtn.disabled = false;
-        fetchMetadataBtn.innerHTML = `
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <circle cx="11" cy="11" r="8"></circle>
-            <path d="m21 21-4.35-4.35"></path>
-          </svg>
-          Fetch
-        `;
+        if (window.Skeleton) {
+          Skeleton.buttonLoading(fetchMetadataBtn, false);
+          // Restore button content
+          fetchMetadataBtn.innerHTML = `
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            Fetch
+          `;
+        } else {
+          fetchMetadataBtn.disabled = false;
+          fetchMetadataBtn.innerHTML = `
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            Fetch
+          `;
+        }
       }
     });
 
@@ -655,6 +685,12 @@
 
         // Show success and preview
         showStatus('Upload successful!', 'success');
+        Toast.success('Movie uploaded successfully!');
+        
+        // Announce to screen readers
+        if (window.A11y) {
+          A11y.announce('Upload complete. Movie added to your library.');
+        }
         
         // Update quota display after successful upload
         await loadQuotaInfo();
@@ -668,8 +704,11 @@
         // Special handling for quota errors
         if (error.message.includes('quota') || error.message.includes('limit')) {
           errorMessage = `⚠️ ${error.message}`;
+          Toast.warning(errorMessage, { duration: 8000 });
           // Refresh quota display
           await loadQuotaInfo();
+        } else {
+          Toast.error(errorMessage);
         }
         
         showStatus(errorMessage, 'error');
@@ -678,7 +717,16 @@
     };
 
     cancelBtn.onclick = async () => {
-      if (!confirm('Are you sure you want to cancel the upload?')) return;
+      // Use Modal for confirmation
+      const confirmed = await Modal.confirm({
+        title: 'Cancel Upload',
+        message: 'Are you sure you want to cancel the upload? All progress will be lost.',
+        confirmText: 'Yes, Cancel',
+        cancelText: 'Continue Upload',
+        variant: 'danger'
+      });
+      
+      if (!confirmed) return;
 
       isUploading = false;
 
@@ -688,6 +736,7 @@
             method: 'POST',
             body: JSON.stringify({ uploadId })
           });
+          Toast.info('Upload cancelled');
         } catch (error) {
           console.error('Cancel failed:', error);
         }
