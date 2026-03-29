@@ -5,6 +5,11 @@
       "source": "pproenca/dot-skills",
       "sourceType": "github",
       "computedHash": "5044cbfc49bba2122b1cef3dcb960b8e415867db90f097f9e9bcdb24df695d11"
+    },
+    "systematic-debugging": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "72e9ab72627e4fd8ed26a582e82309a98ecdc4f6e1c99418430ac05682c9e91d"
     }
   }
 }
