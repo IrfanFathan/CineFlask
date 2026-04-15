@@ -16,8 +16,10 @@ const generalLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   skip: (req) => {
-    // Skip rate limiting for streaming endpoints (they're handled separately)
-    return req.path.startsWith('/api/stream');
+    // Skip rate limiting for high-frequency chunk endpoints and streaming
+    return req.path.startsWith('/api/stream') ||
+      req.path === '/api/upload/chunk' ||
+      req.path === '/api/upload-series/episode/chunk';
   }
 });
 
@@ -34,13 +36,25 @@ const authLimiter = rateLimit({
   skipSuccessfulRequests: true, // Don't count successful requests
 });
 
-// Upload rate limiter - prevent upload abuse
-const uploadLimiter = rateLimit({
+// Upload control routes limiter - init/complete/cancel/quota endpoints
+const uploadControlLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 50, // Limit each IP to 50 uploads per hour
+  max: 120,
   message: {
     success: false,
-    message: 'Upload limit reached, please try again later.'
+    message: 'Upload control request limit reached, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Chunk route limiter - allows large uploads while still rate-limiting abuse
+const uploadChunkLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10000,
+  message: {
+    success: false,
+    message: 'Chunk upload rate limit reached, please try again later.'
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -61,6 +75,7 @@ const metadataLimiter = rateLimit({
 module.exports = {
   generalLimiter,
   authLimiter,
-  uploadLimiter,
+  uploadControlLimiter,
+  uploadChunkLimiter,
   metadataLimiter
 };

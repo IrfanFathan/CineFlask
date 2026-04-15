@@ -10,14 +10,18 @@ const path = require('path');
 const crypto = require('crypto');
 const db = require('../database/db');
 const authMiddleware = require('../middleware/authMiddleware');
+const { uploadControlLimiter, uploadChunkLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
-// Dynamic import for fetch
+// Lazy-load fetch to avoid race condition
 let fetch;
-(async () => {
-  fetch = (await import('node-fetch')).default;
-})();
+async function getFetch() {
+  if (!fetch) {
+    fetch = (await import('node-fetch')).default;
+  }
+  return fetch;
+}
 
 // Configure multer for chunk uploads (reuse from existing upload.js)
 const storage = multer.diskStorage({
@@ -45,7 +49,7 @@ const upload = multer({
 router.use(authMiddleware);
 
 // Initialize series creation (with OMDB fetch)
-router.post('/series/init', async (req, res, next) => {
+router.post('/series/init', uploadControlLimiter, async (req, res, next) => {
   try {
     const { seriesTitle, imdbId } = req.body;
 
@@ -88,7 +92,8 @@ router.post('/series/init', async (req, res, next) => {
         }
 
         console.log(`📡 Fetching series metadata from OMDB...`);
-        const response = await fetch(url);
+        const fetchFn = await getFetch();
+        const response = await fetchFn(url);
         const data = await response.json();
 
         if (data.Response !== 'False') {
@@ -163,7 +168,7 @@ router.post('/series/init', async (req, res, next) => {
 });
 
 // Add season to series (with OMDB season metadata fetch)
-router.post('/series/season', async (req, res, next) => {
+router.post('/series/season', uploadControlLimiter, async (req, res, next) => {
   try {
     const { seriesId, seasonNumber, title, year } = req.body;
 
@@ -207,7 +212,8 @@ router.post('/series/season', async (req, res, next) => {
         const url = `http://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}&i=${series.imdb_id}&Season=${seasonNumber}`;
         console.log(`📡 Fetching season ${seasonNumber} metadata...`);
 
-        const response = await fetch(url);
+        const fetchFn = await getFetch();
+        const response = await fetchFn(url);
         const data = await response.json();
 
         if (data.Response !== 'False' && data.Episodes) {
@@ -250,7 +256,7 @@ router.post('/series/season', async (req, res, next) => {
 });
 
 // Initialize episode upload (chunked)
-router.post('/episode/init', (req, res, next) => {
+router.post('/episode/init', uploadControlLimiter, (req, res, next) => {
   try {
     const { filename, filesize, seasonId, episodeNumber } = req.body;
 
@@ -307,7 +313,7 @@ router.post('/episode/init', (req, res, next) => {
 });
 
 // Upload episode chunk (reuse existing chunk upload logic)
-router.post('/episode/chunk', upload.single('chunk'), (req, res, next) => {
+router.post('/episode/chunk', uploadChunkLimiter, upload.single('chunk'), (req, res, next) => {
   try {
     const { uploadId, chunkIndex, totalChunks } = req.body;
 
@@ -347,7 +353,7 @@ router.post('/episode/chunk', upload.single('chunk'), (req, res, next) => {
 });
 
 // Complete episode upload
-router.post('/episode/complete', async (req, res, next) => {
+router.post('/episode/complete', uploadControlLimiter, async (req, res, next) => {
   try {
     const { uploadId, seasonId, episodeNumber, filename, totalChunks, title, description } = req.body;
 
@@ -453,7 +459,7 @@ router.post('/episode/complete', async (req, res, next) => {
 });
 
 // Cancel upload
-router.post('/episode/cancel', (req, res, next) => {
+router.post('/episode/cancel', uploadControlLimiter, (req, res, next) => {
   try {
     const { uploadId, totalChunks } = req.body;
 

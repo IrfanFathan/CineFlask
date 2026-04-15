@@ -345,7 +345,7 @@ class AccessibilityUtils {
    * @returns {string} Unique ID
    */
   generateId(prefix = 'a11y') {
-    return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
   }
 }
 

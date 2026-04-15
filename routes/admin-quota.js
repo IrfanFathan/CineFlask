@@ -172,7 +172,9 @@ router.get('/stats', (req, res, next) => {
       usage: {
         totalMovies: usage.total_movies,
         totalGB: (usage.total_bytes / (1024 * 1024 * 1024)).toFixed(2),
-        percentageUsed: ((usage.total_bytes / (stats.total_quota_gb * 1024 * 1024 * 1024)) * 100).toFixed(1)
+        percentageUsed: stats.total_quota_gb > 0 
+          ? ((usage.total_bytes / (stats.total_quota_gb * 1024 * 1024 * 1024)) * 100).toFixed(1)
+          : '0.0'
       },
       today: {
         uploads: todayActivity.total_uploads || 0,

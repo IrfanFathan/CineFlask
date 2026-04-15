@@ -273,8 +273,8 @@
         <svg class="empty-state__icon" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"></path>
         </svg>
-        <h3 class="empty-state__title">No movies found</h3>
-        <p class="empty-state__description">Try adjusting your filters or upload your first movie.</p>
+        <h3 class="empty-state__title">No movies yet</h3>
+        <p class="empty-state__description">Upload your first movie to get started. It only takes a moment.</p>
         <a href="/upload.html" class="btn btn-primary">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"></path>
@@ -285,7 +285,7 @@
     </section>
 
     <!-- TV Series -->
-    <section class="section" id="series-section" aria-labelledby="series-title">
+    <section class="section" id="series-section" style="display: none;" aria-labelledby="series-title">
       <div class="section-header">
         <h2 class="section-title" id="series-title">TV Series</h2>
         <span id="series-count" class="section-count" aria-live="polite"></span>
@@ -399,13 +399,23 @@
 
         const query = buildFilterQuery();
 
-        // Fetch filtered movies
-        const moviesData = await fetchAPI(`/movies?${query}`);
-        allMovies = moviesData.movies;
+        const [moviesRes, seriesRes] = await Promise.allSettled([
+          fetchAPI(`/movies?${query}`),
+          fetchAPI(`/series?${query}`)
+        ]);
 
-        // Fetch filtered series
-        const seriesData = await fetchAPI(`/series?${query}`);
-        allSeries = seriesData.series || [];
+        if (moviesRes.status !== 'fulfilled') {
+          throw new Error(moviesRes.reason?.message || 'Failed to load movies');
+        }
+
+        allMovies = moviesRes.value.movies || [];
+
+        if (seriesRes.status === 'fulfilled') {
+          allSeries = seriesRes.value.series || [];
+        } else {
+          allSeries = [];
+          console.warn('Series feed unavailable while filtering:', seriesRes.reason);
+        }
 
         // Re-render movies and series
         renderMovies();
@@ -505,14 +515,14 @@
     // Check if user is admin
     function checkAdminStatus() {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('cinelocal_token');
         if (!token) return;
         const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.id === 1) { // Assuming user ID 1 is admin
+        // Show admin button for first user (ID 1) or is_admin flag
+        const isAdmin = payload.is_admin || payload.id === 1;
+        if (isAdmin) {
           const adminBtn = document.getElementById('admin-menu-btn');
-          if (adminBtn) {
-            adminBtn.style.display = 'block';
-          }
+          if (adminBtn) adminBtn.style.display = 'flex';
         }
       } catch (e) {
         console.error('Error parsing token', e);
@@ -530,31 +540,80 @@
       }
       
       try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const isFreshUpload = urlParams.get('fresh') === '1';
+        if (isFreshUpload) {
+          currentFilters = {
+            genre: '',
+            year_min: '',
+            year_max: '',
+            rating_min: '',
+            language: '',
+            sort_by: 'created_at',
+            sort_order: 'DESC'
+          };
+          filterGenre.value = '';
+          filterYearMin.value = '';
+          filterYearMax.value = '';
+          filterRating.value = '';
+          filterLanguage.value = '';
+          sortBy.value = 'created_at';
+          updateSortIcon();
+          history.replaceState({}, '', '/home.html');
+        }
+
         const query = buildFilterQuery();
 
-        // Fetch all movies
-        const moviesData = await fetchAPI(`/movies?${query}`);
-        allMovies = moviesData.movies;
+        const results = await Promise.allSettled([
+          fetchAPI(`/movies?${query}`),
+          fetchAPI(`/series?${query}`),
+          fetchAPI(`/progress?profile_id=${profile.id}`),
+          fetchAPI(`/progress/episode/in-progress?profile_id=${profile.id}`),
+          fetchAPI(`/watchlist?profile_id=${profile.id}`),
+          fetchAPI(`/watchlist/series?profile_id=${profile.id}`)
+        ]);
 
-        // Fetch all series
-        const seriesData = await fetchAPI(`/series?${query}`);
-        allSeries = seriesData.series || [];
+        const [moviesRes, seriesRes, progressRes, seriesProgressRes, watchlistRes, watchlistSeriesRes] = results;
 
-        // Fetch continue watching movies
-        const progressData = await fetchAPI(`/progress?profile_id=${profile.id}`);
-        continueWatchingMovies = progressData.movies;
+        if (moviesRes.status !== 'fulfilled') {
+          throw new Error(moviesRes.reason?.message || 'Failed to load movies');
+        }
+        allMovies = moviesRes.value.movies || [];
 
-        // Fetch continue watching series (in-progress episodes)
-        const seriesProgressData = await fetchAPI(`/progress/episode/in-progress?profile_id=${profile.id}`);
-        continueWatchingSeries = seriesProgressData.series || [];
+        if (seriesRes.status === 'fulfilled') {
+          allSeries = seriesRes.value.series || [];
+        } else {
+          allSeries = [];
+          console.warn('Series feed unavailable:', seriesRes.reason);
+        }
 
-        // Fetch watchlist movies
-        const watchlistData = await fetchAPI(`/watchlist?profile_id=${profile.id}`);
-        watchlistMovies = watchlistData.movies;
+        if (progressRes.status === 'fulfilled') {
+          continueWatchingMovies = progressRes.value.movies || [];
+        } else {
+          continueWatchingMovies = [];
+          console.warn('Movie progress feed unavailable:', progressRes.reason);
+        }
 
-        // Fetch watchlist series
-        const seriesWatchlistData = await fetchAPI(`/watchlist/series?profile_id=${profile.id}`);
-        watchlistSeries = seriesWatchlistData.series || [];
+        if (seriesProgressRes.status === 'fulfilled') {
+          continueWatchingSeries = seriesProgressRes.value.series || [];
+        } else {
+          continueWatchingSeries = [];
+          console.warn('Series progress feed unavailable:', seriesProgressRes.reason);
+        }
+
+        if (watchlistRes.status === 'fulfilled') {
+          watchlistMovies = watchlistRes.value.movies || [];
+        } else {
+          watchlistMovies = [];
+          console.warn('Movie watchlist feed unavailable:', watchlistRes.reason);
+        }
+
+        if (watchlistSeriesRes.status === 'fulfilled') {
+          watchlistSeries = watchlistSeriesRes.value.series || [];
+        } else {
+          watchlistSeries = [];
+          console.warn('Series watchlist feed unavailable:', watchlistSeriesRes.reason);
+        }
 
         // Hide skeleton
         if (window.Skeleton) {
@@ -725,13 +784,23 @@
         const filterQuery = buildFilterQuery();
         const searchQuery = `q=${encodeURIComponent(query)}&${filterQuery}`;
 
-        // Search movies
-        const moviesData = await fetchAPI(`/movies?${searchQuery}`);
-        allMovies = moviesData.movies;
+        const [moviesRes, seriesRes] = await Promise.allSettled([
+          fetchAPI(`/movies?${searchQuery}`),
+          fetchAPI(`/series?${searchQuery}`)
+        ]);
 
-        // Search series
-        const seriesData = await fetchAPI(`/series?${searchQuery}`);
-        allSeries = seriesData.series || [];
+        if (moviesRes.status !== 'fulfilled') {
+          throw new Error(moviesRes.reason?.message || 'Failed to search movies');
+        }
+
+        allMovies = moviesRes.value.movies || [];
+
+        if (seriesRes.status === 'fulfilled') {
+          allSeries = seriesRes.value.series || [];
+        } else {
+          allSeries = [];
+          console.warn('Series feed unavailable while searching:', seriesRes.reason);
+        }
 
         renderMovies();
         renderSeries();

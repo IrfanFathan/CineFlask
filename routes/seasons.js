@@ -11,11 +11,14 @@ const path = require('path');
 
 const router = express.Router();
 
-// Dynamic import for fetch
+// Lazy-load fetch to avoid race condition
 let fetch;
-(async () => {
-  fetch = (await import('node-fetch')).default;
-})();
+async function getFetch() {
+  if (!fetch) {
+    fetch = (await import('node-fetch')).default;
+  }
+  return fetch;
+}
 
 // All routes require authentication
 router.use(authMiddleware);
@@ -67,7 +70,8 @@ router.post('/', async (req, res, next) => {
         const url = `http://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}&i=${series.imdb_id}&Season=${season_number}`;
         console.log(`📡 Fetching season ${season_number} metadata for ${series.title}...`);
 
-        const response = await fetch(url);
+        const fetchFn = await getFetch();
+        const response = await fetchFn(url);
         const data = await response.json();
 
         if (data.Response !== 'False' && data.Episodes) {

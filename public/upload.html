@@ -643,6 +643,9 @@
           // Check if chunk upload succeeded
           if (!chunkResponse.ok) {
             const errorData = await chunkResponse.json().catch(() => ({ message: 'Chunk upload failed' }));
+            if (chunkResponse.status === 429) {
+              throw new Error('Rate limit exceeded during chunk upload. Please retry in a few minutes.');
+            }
             throw new Error(errorData.message || `Failed to upload chunk ${i + 1}`);
           }
 
@@ -764,6 +767,13 @@
       const previewCard = document.getElementById('preview-card');
       previewCard.innerHTML = createMovieCard(movie);
       moviePreview.style.display = 'block';
+
+      const viewBtn = moviePreview.querySelector('.btn.btn-primary');
+      if (viewBtn) {
+        viewBtn.onclick = () => {
+          window.location.href = '/home.html?fresh=1';
+        };
+      }
     }
 
     function formatFileSize(bytes) {

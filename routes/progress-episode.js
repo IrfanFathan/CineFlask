@@ -12,6 +12,52 @@ const router = express.Router();
 // All routes require authentication
 router.use(authMiddleware);
 
+/**
+ * Shared query for in-progress series
+ */
+function getInProgressSeries(profileId) {
+  // Get series with recent episode progress > 30s and < 95% watched
+  const inProgress = db.prepare(`
+    SELECT 
+      ep.*,
+      s.title as series_title,
+      s.poster_url,
+      s.genre,
+      s.imdb_rating,
+      e.episode_number,
+      e.title as episode_title,
+      e.id as episode_id,
+      se.season_number,
+      CASE 
+        WHEN ep.duration_seconds > 0 
+        THEN (ep.timestamp_seconds * 1.0 / ep.duration_seconds) * 100 
+        ELSE 0 
+      END as progress_percentage
+    FROM episode_progress ep
+    JOIN episodes e ON ep.episode_id = e.id
+    JOIN seasons se ON e.season_id = se.id
+    JOIN series s ON ep.series_id = s.id
+    WHERE ep.profile_id = ?
+      AND ep.timestamp_seconds > 30
+      AND (
+        ep.duration_seconds IS NULL 
+        OR (ep.timestamp_seconds * 1.0 / ep.duration_seconds) < 0.95
+      )
+    ORDER BY ep.updated_at DESC
+    LIMIT 20
+  `).all(profileId);
+
+  // Group by series (show only most recent episode per series)
+  const seriesMap = new Map();
+  inProgress.forEach(item => {
+    if (!seriesMap.has(item.series_id)) {
+      seriesMap.set(item.series_id, item);
+    }
+  });
+
+  return Array.from(seriesMap.values());
+}
+
 // Save episode playback progress
 router.post('/', (req, res, next) => {
   try {
@@ -51,6 +97,29 @@ router.post('/', (req, res, next) => {
   }
 });
 
+// Get all in-progress series (Continue Watching)
+router.get('/in-progress', (req, res, next) => {
+  try {
+    const { profile_id } = req.query;
+
+    if (!profile_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'profile_id query parameter is required'
+      });
+    }
+
+    const series = getInProgressSeries(profile_id);
+
+    res.json({
+      success: true,
+      series
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Get progress for specific episode
 router.get('/:episodeId', (req, res, next) => {
   try {
@@ -78,7 +147,7 @@ router.get('/:episodeId', (req, res, next) => {
   }
 });
 
-// Get all in-progress series (Continue Watching)
+// Backward-compatible alias for in-progress list
 router.get('/', (req, res, next) => {
   try {
     const { profile_id } = req.query;
@@ -89,47 +158,7 @@ router.get('/', (req, res, next) => {
         message: 'profile_id query parameter is required'
       });
     }
-
-    // Get series with recent episode progress > 30s and < 95% watched
-    const inProgress = db.prepare(`
-      SELECT 
-        ep.*,
-        s.title as series_title,
-        s.poster_url,
-        s.genre,
-        s.imdb_rating,
-        e.episode_number,
-        e.title as episode_title,
-        e.id as episode_id,
-        se.season_number,
-        CASE 
-          WHEN ep.duration_seconds > 0 
-          THEN (ep.timestamp_seconds * 1.0 / ep.duration_seconds) * 100 
-          ELSE 0 
-        END as progress_percentage
-      FROM episode_progress ep
-      JOIN episodes e ON ep.episode_id = e.id
-      JOIN seasons se ON e.season_id = se.id
-      JOIN series s ON ep.series_id = s.id
-      WHERE ep.profile_id = ?
-        AND ep.timestamp_seconds > 30
-        AND (
-          ep.duration_seconds IS NULL 
-          OR (ep.timestamp_seconds * 1.0 / ep.duration_seconds) < 0.95
-        )
-      ORDER BY ep.updated_at DESC
-      LIMIT 20
-    `).all(profile_id);
-
-    // Group by series (show only most recent episode per series)
-    const seriesMap = new Map();
-    inProgress.forEach(item => {
-      if (!seriesMap.has(item.series_id)) {
-        seriesMap.set(item.series_id, item);
-      }
-    });
-
-    const series = Array.from(seriesMap.values());
+    const series = getInProgressSeries(profile_id);
 
     res.json({
       success: true,

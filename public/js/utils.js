@@ -152,17 +152,48 @@ async function fetchAPI(endpoint, options = {}) {
 // ============================================
 
 /**
- * Show toast notification
+ * Show toast notification with icon and animation
+ * @param {string} message - Message to display
+ * @param {'info'|'success'|'error'|'warning'} type - Toast type
+ * @param {number} duration - Duration in ms (default 3500)
  */
-function showToast(message, type = 'info') {
+function showToast(message, type = 'info', duration = 3500) {
+  // Icons per type
+  const icons = {
+    success: `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>`,
+    error:   `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>`,
+    warning: `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>`,
+    info:    `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>`
+  };
+
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.textContent = message;
+  toast.setAttribute('role', 'alert');
+  toast.setAttribute('aria-live', 'assertive');
+  toast.style.cssText = `
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideIn 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  `;
+  toast.innerHTML = `
+    <span style="flex-shrink:0;color:${type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : type === 'warning' ? 'var(--warning)' : 'var(--info)'}">${icons[type] || icons.info}</span>
+    <span>${message}</span>
+  `;
   document.body.appendChild(toast);
 
-  setTimeout(() => {
-    toast.remove();
-  }, 3000);
+  // Auto dismiss with fade out
+  const timer = setTimeout(() => {
+    toast.style.animation = 'slideOutUp 0.25s var(--ease-out) forwards';
+    setTimeout(() => toast.remove(), 250);
+  }, duration);
+
+  // Click to dismiss
+  toast.onclick = () => {
+    clearTimeout(timer);
+    toast.style.animation = 'slideOutUp 0.2s var(--ease-out) forwards';
+    setTimeout(() => toast.remove(), 200);
+  };
 }
 
 /**

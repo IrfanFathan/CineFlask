@@ -16,12 +16,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Tab switching logic
-function switchTab(tabId) {
+function switchTab(tabId, event) {
   // Update buttons
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.remove('active');
   });
-  event.target.classList.add('active');
+  if (event && event.target) {
+    event.target.classList.add('active');
+  } else {
+    // Fallback: find the button by tabId
+    document.querySelector(`[onclick*="switchTab('${tabId}'"]`)?.classList.add('active');
+  }
   
   // Update content
   document.querySelectorAll('.tab-content').forEach(content => {
@@ -37,7 +42,7 @@ function switchTab(tabId) {
 
 async function loadDashboardData() {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('cinelocal_token');
     const response = await fetch('/api/admin/stats', {
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -61,13 +66,16 @@ async function loadDashboardData() {
     }
   } catch (error) {
     console.error('Failed to load dashboard data:', error);
+    // Hide loader on error too
+    const loader = document.getElementById('loading-overlay');
+    if (loader) loader.style.display = 'none';
     alert('Failed to load admin data. Check console for details.');
   }
 }
 
 async function loadUsers() {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('cinelocal_token');
     const response = await fetch('/api/admin/users', {
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -111,7 +119,7 @@ async function loadUsers() {
 
 async function loadSystemInfo() {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('cinelocal_token');
     const response = await fetch('/api/admin/system', {
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -143,7 +151,7 @@ async function loadLogs() {
   viewer.innerHTML = 'Loading...';
   
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('cinelocal_token');
     const response = await fetch(`/api/admin/logs?lines=${lines}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -170,7 +178,7 @@ async function deleteUser(id, username) {
   }
   
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('cinelocal_token');
     const response = await fetch(`/api/admin/users/${id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
@@ -195,7 +203,7 @@ async function clearCache(type) {
   if (!confirm(`Are you sure you want to clear the ${type.toUpperCase()} cache?`)) return;
   
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('cinelocal_token');
     const response = await fetch('/api/admin/cache/clear', {
       method: 'POST',
       headers: { 

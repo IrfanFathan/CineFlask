@@ -40,7 +40,7 @@ const watchlistSeriesRoutes = require('./routes/watchlist-series');
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
 const securityHeaders = require('./middleware/security');
-const { generalLimiter, authLimiter, uploadLimiter, metadataLimiter } = require('./middleware/rateLimiter');
+const { generalLimiter, authLimiter, metadataLimiter } = require('./middleware/rateLimiter');
 
 // Initialize Express app
 const app = express();
@@ -88,7 +88,7 @@ app.use('/api/auth', authLimiter, authRoutes);
 // Regular routes
 app.use('/api/profiles', profileRoutes);
 app.use('/api/movies', movieRoutes);
-app.use('/api/upload', uploadLimiter, uploadRoutes);
+app.use('/api/upload', uploadRoutes);
 app.use('/api/stream', streamRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/watchlist', watchlistRoutes);
@@ -102,7 +102,7 @@ app.use('/api/opensubtitles', osRoutes);
 app.use('/api/series', seriesRoutes);
 app.use('/api/seasons', seasonsRoutes);
 app.use('/api/episodes', episodesRoutes);
-app.use('/api/upload-series', uploadLimiter, uploadSeriesRoutes);
+app.use('/api/upload-series', uploadSeriesRoutes);
 app.use('/api/stream/episode', streamEpisodeRoutes);
 app.use('/api/subtitles/episode', subtitlesEpisodeRoutes);
 app.use('/api/progress/episode', progressEpisodeRoutes);

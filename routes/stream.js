@@ -43,48 +43,71 @@ router.get('/:id', (req, res, next) => {
     const fileSize = stat.size;
     const range = req.headers.range;
 
-    // If range header exists, send partial content (required for seek)
+    // Always advertise range support
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Content-Type', getContentType(videoPath));
+
+    // If range header exists, send partial content (required for seek / iOS)
     if (range) {
       // Parse range header (format: "bytes=start-end")
-      const parts = range.replace(/bytes=/, "").split("-");
+      const parts = range.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      // If end is omitted, send 1MB chunks for better buffering
+      const CHUNK = 1024 * 1024; // 1 MB
+      const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + CHUNK - 1, fileSize - 1);
 
-      // Validate range
-      if (start >= fileSize || end >= fileSize) {
-        res.status(416).set({
+      // Validate range - start must be within file, end must not exceed last byte
+      if (isNaN(start) || isNaN(end) || start >= fileSize || end >= fileSize || start > end) {
+        return res.status(416).set({
           'Content-Range': `bytes */${fileSize}`
-        });
-        return res.end();
+        }).end();
       }
 
       const chunksize = (end - start) + 1;
-      const file = fs.createReadStream(videoPath, { start, end });
+      const fileStream = fs.createReadStream(videoPath, { start, end });
+
+      // Handle stream errors (e.g. file deleted during playback)
+      fileStream.on('error', (err) => {
+        console.error('Stream error:', err);
+        if (!res.headersSent) {
+          res.status(500).end();
+        }
+      });
 
       // Set headers for partial content
-      res.status(206).set({
+      res.writeHead(206, {
         'Content-Range': `bytes ${start}-${end}/${fileSize}`,
         'Accept-Ranges': 'bytes',
         'Content-Length': chunksize,
-        'Content-Type': getContentType(videoPath)
+        'Content-Type': getContentType(videoPath),
+        'Cache-Control': 'no-store' // Prevent caching issues on seek
       });
 
-      file.pipe(res);
+      fileStream.pipe(res);
     } else {
       // No range header - send entire file
-      res.status(200).set({
-        'Content-Length': fileSize,
-        'Content-Type': getContentType(videoPath),
-        'Accept-Ranges': 'bytes'
+      const fileStream = fs.createReadStream(videoPath);
+
+      fileStream.on('error', (err) => {
+        console.error('Stream error:', err);
+        if (!res.headersSent) res.status(500).end();
       });
 
-      fs.createReadStream(videoPath).pipe(res);
+      res.writeHead(200, {
+        'Content-Length': fileSize,
+        'Content-Type': getContentType(videoPath),
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'no-store'
+      });
+
+      fileStream.pipe(res);
     }
 
   } catch (error) {
     next(error);
   }
 });
+
 
 /**
  * Get MIME type based on file extension

@@ -246,7 +246,7 @@
           queueItem.status = 'uploading';
           renderQueue();
 
-          const token = localStorage.getItem('token');
+          const token = localStorage.getItem('cinelocal_token');
           const file = queueItem.file;
           const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
           
@@ -254,7 +254,7 @@
           const fileId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
           // 1. Initiate upload
-          const initRes = await fetch('/api/upload/initiate', {
+          const initRes = await fetch('/api/upload/init', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -296,6 +296,8 @@
             },
             body: JSON.stringify({
               uploadId,
+              filename: file.name,
+              totalChunks,
               title: queueItem.cleanTitle
             })
           });

@@ -10,6 +10,7 @@ const path = require('path');
 const crypto = require('crypto');
 const db = require('../database/db');
 const authMiddleware = require('../middleware/authMiddleware');
+const { uploadControlLimiter, uploadChunkLimiter } = require('../middleware/rateLimiter');
 const { fetchMetadata, fetchMetadataByImdbId, extractYear } = require('../helpers/metadataEnhanced');
 const { canUpload, recordUpload, getUserUploadStats } = require('../helpers/quotaManager');
 
@@ -42,7 +43,7 @@ const upload = multer({
 router.use(authMiddleware);
 
 // Get user upload quota/stats
-router.get('/quota', (req, res, next) => {
+router.get('/quota', uploadControlLimiter, (req, res, next) => {
   try {
     const stats = getUserUploadStats(req.user.id);
     res.json({
@@ -55,7 +56,7 @@ router.get('/quota', (req, res, next) => {
 });
 
 // Initialize chunked upload
-router.post('/init', (req, res, next) => {
+router.post('/init', uploadControlLimiter, (req, res, next) => {
   try {
     const { filename, fileSize, totalChunks } = req.body;
 
@@ -104,7 +105,7 @@ router.post('/init', (req, res, next) => {
 });
 
 // Upload single chunk
-router.post('/chunk', upload.single('chunk'), (req, res, next) => {
+router.post('/chunk', uploadChunkLimiter, upload.single('chunk'), (req, res, next) => {
   try {
     const { uploadId, chunkIndex, totalChunks } = req.body;
 
@@ -150,7 +151,7 @@ router.post('/chunk', upload.single('chunk'), (req, res, next) => {
 });
 
 // Complete upload - merge chunks and save to database
-router.post('/complete', async (req, res, next) => {
+router.post('/complete', uploadControlLimiter, async (req, res, next) => {
   const ipAddress = req.ip || req.connection.remoteAddress;
   
   try {
@@ -287,7 +288,7 @@ router.post('/complete', async (req, res, next) => {
 });
 
 // Cancel upload - cleanup temp chunks
-router.post('/cancel', (req, res, next) => {
+router.post('/cancel', uploadControlLimiter, (req, res, next) => {
   try {
     const { uploadId, totalChunks } = req.body;
 

@@ -4,25 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Who's Watching? - CineLocal</title>
+  <meta name="description" content="Select your profile to start watching on CineLocal">
   
-  <!-- Preconnect to Google Fonts for faster loading -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  
-  <!-- Load fonts with display=swap to avoid FOUT -->
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="/css/style.css">
   
-  <script>
-    // Only auto-redirect if they came from the root URL and already have a profile selected
-    if (document.referrer.endsWith('/') && sessionStorage.getItem('cinelocal_profile')) {
-      window.location.replace('/home.html');
-    }
-  </script>
   <style>
-    .profiles-container {
+    body {
       min-height: 100vh;
+      background: var(--bg-base);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -30,18 +23,46 @@
       padding: var(--space-lg);
     }
 
-    .profiles-title {
-      font-size: var(--text-h1);
-      margin-bottom: var(--space-2xl);
-      text-align: center;
+    /* ── Top logo ─────────────────────────────── */
+    .profiles-logo {
+      position: fixed;
+      top: var(--space-lg);
+      left: var(--space-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-family: var(--font-display);
+      font-size: 1.375rem;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: var(--tracking-tight);
+      text-decoration: none;
     }
 
+    /* ── Page header ──────────────────────────── */
+    .profiles-page {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-2xl);
+      animation: fadeIn var(--duration-slow) var(--ease-out);
+    }
+
+    .profiles-heading {
+      font-size: clamp(2rem, 5vw, var(--text-hero));
+      font-weight: 800;
+      letter-spacing: var(--tracking-tight);
+      text-align: center;
+      margin: 0;
+    }
+
+    /* ── Profile cards grid ───────────────────── */
     .profiles-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      display: flex;
       gap: var(--space-xl);
-      max-width: 800px;
-      width: 100%;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 900px;
     }
 
     .profile-card {
@@ -49,120 +70,366 @@
       flex-direction: column;
       align-items: center;
       gap: var(--space-md);
-      padding: var(--space-lg);
       cursor: pointer;
       transition: transform var(--transition-base);
+      will-change: transform;
+      min-width: 120px;
     }
 
     .profile-card:hover {
-      transform: scale(1.1);
+      transform: scale(1.07);
+    }
+
+    .profile-card:hover .profile-avatar-large {
+      border-color: var(--text-primary);
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.06);
     }
 
     .profile-avatar-large {
       width: 120px;
       height: 120px;
-      border-radius: 50%;
+      border-radius: var(--radius-lg);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 2.5rem;
+      font-size: 2.75rem;
       font-weight: 700;
+      font-family: var(--font-display);
       color: white;
       border: 3px solid transparent;
-      transition: border-color var(--transition-fast);
-    }
-
-    .profile-card:hover .profile-avatar-large {
-      border-color: var(--accent);
+      transition: border-color var(--transition-fast),
+                  box-shadow var(--transition-fast);
+      position: relative;
+      overflow: hidden;
     }
 
     .profile-name {
-      font-size: var(--text-body-lg);
-      font-weight: 600;
+      font-size: var(--text-sm);
+      font-weight: 500;
       color: var(--text-secondary);
-      max-width: 150px;
+      max-width: 130px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      text-align: center;
+      transition: color var(--transition-fast);
     }
 
     .profile-card:hover .profile-name {
       color: var(--text-primary);
     }
 
-    .add-profile-card {
-      border: 2px dashed var(--border);
-      border-radius: var(--radius-md);
-    }
-
-    .add-profile-card .profile-avatar-large {
+    /* Add profile card */
+    .profile-add-card .profile-avatar-large {
       background: var(--bg-card);
+      border: 2px dashed var(--border);
       color: var(--text-muted);
     }
 
-    .logout-btn {
+    .profile-add-card:hover .profile-avatar-large {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ── Footer buttons ───────────────────────── */
+    .profiles-footer {
+      display: flex;
+      gap: var(--space-md);
+    }
+
+    /* ── Add Profile Modal ────────────────────── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-overlay);
+      backdrop-filter: blur(8px);
+      z-index: var(--z-modal-backdrop);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-lg);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition-base);
+    }
+
+    .modal-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: var(--space-2xl);
+      width: 100%;
+      max-width: 440px;
+      transform: translateY(20px) scale(0.97);
+      transition: transform var(--transition-base);
+    }
+
+    .modal-backdrop.active .modal {
+      transform: translateY(0) scale(1);
+    }
+
+    .modal-title {
+      font-size: var(--text-h2);
+      font-weight: 700;
+      margin: 0 0 var(--space-xl);
+    }
+
+    /* ── Avatar color picker ──────────────────── */
+    .avatar-preview {
+      width: 80px;
+      height: 80px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: 700;
+      font-family: var(--font-display);
+      color: white;
+      margin: 0 auto var(--space-lg);
+      transition: background var(--transition-base);
+    }
+
+    .color-picker {
+      display: flex;
+      gap: var(--space-sm);
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: var(--space-xl);
+    }
+
+    .color-swatch {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-full);
+      cursor: pointer;
+      border: 3px solid transparent;
+      transition: transform var(--transition-fast),
+                  border-color var(--transition-fast);
+    }
+
+    .color-swatch:hover {
+      transform: scale(1.15);
+    }
+
+    .color-swatch.active {
+      border-color: white;
+      transform: scale(1.15);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: var(--space-md);
       margin-top: var(--space-xl);
+    }
+
+    .modal-actions .btn {
+      flex: 1;
+    }
+
+    /* ── Delete mode ──────────────────────────── */
+    .profile-card.manage-mode .profile-avatar-large::after {
+      content: '✕';
+      position: absolute;
+      inset: 0;
+      background: rgba(224, 82, 82, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: 700;
+      color: white;
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+      border-radius: inherit;
+    }
+
+    .profile-card.manage-mode:hover .profile-avatar-large::after {
+      opacity: 1;
+    }
+
+    /* ── Toast override for profiles page ────── */
+    .toast {
+      animation: slideIn var(--duration-slow) var(--ease-spring);
     }
   </style>
 </head>
 <body>
-  <div class="profiles-container">
-    <h1 class="profiles-title">Who's watching?</h1>
-    
+
+  <!-- Logo -->
+  <a href="/profiles.html" class="profiles-logo" aria-label="CineLocal home">
+    <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 5v14l11-7z"/>
+    </svg>
+    CineLocal
+  </a>
+
+  <!-- Main page -->
+  <div class="profiles-page" id="profiles-page">
+    <h1 class="profiles-heading">Who's Watching?</h1>
+
     <div class="profiles-grid" id="profiles-grid">
-      <!-- Profiles loaded here -->
+      <!-- Skeleton cards -->
+      <div class="profile-card" style="pointer-events:none;">
+        <div class="profile-avatar-large skeleton" style="background:var(--bg-card);"></div>
+        <div class="skeleton-text skeleton-text-short" style="width:80px;"></div>
+      </div>
     </div>
 
-    <button class="btn btn-secondary logout-btn" onclick="logout()">
-      Logout
-    </button>
+    <div class="profiles-footer">
+      <button class="btn btn-secondary" id="manage-btn" onclick="toggleManageMode()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Manage Profiles
+      </button>
+      <button class="btn btn-secondary" onclick="logout()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        Sign Out
+      </button>
+    </div>
   </div>
 
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Add Profile Modal -->
+  <div class="modal-backdrop" id="add-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <h2 class="modal-title" id="modal-title">New Profile</h2>
+
+      <!-- Avatar preview -->
+      <div class="avatar-preview" id="avatar-preview">?</div>
+
+      <!-- Color picker -->
+      <div class="color-picker" id="color-picker" role="listbox" aria-label="Choose avatar color"></div>
+
+      <!-- Name input -->
+      <div class="form-group">
+        <label class="form-label" for="profile-name-input">Profile Name</label>
+        <input
+          type="text"
+          id="profile-name-input"
+          class="form-input"
+          placeholder="e.g. Dad, Kids, Guest…"
+          maxlength="24"
+          autocomplete="off"
+          autofocus
+        >
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" id="save-profile-btn" onclick="saveProfile()">
+          Create Profile
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script src="/js/utils.js"></script>
   <script>
     requireAuth();
 
-    const MAX_PROFILES = 4;
-    const AVATAR_COLORS = ['#7c5cfc', '#e05252', '#52e09a', '#f5c518', '#9b7ffe', '#ff6b9d'];
+    const MAX_PROFILES = 5;
+    const AVATAR_COLORS = [
+      '#7c5cfc', // purple (accent)
+      '#e05252', // red
+      '#52e09a', // green
+      '#f5c518', // gold
+      '#3b82f6', // blue
+      '#f97316', // orange
+      '#ec4899', // pink
+      '#06b6d4', // cyan
+    ];
 
+    let manageMode = false;
+    let selectedColor = AVATAR_COLORS[0];
+
+    // ── Color picker init ─────────────────────────
+    const colorPickerEl = document.getElementById('color-picker');
+    AVATAR_COLORS.forEach((color, i) => {
+      const swatch = document.createElement('button');
+      swatch.className = 'color-swatch' + (i === 0 ? ' active' : '');
+      swatch.style.background = color;
+      swatch.setAttribute('aria-label', `Color ${i + 1}`);
+      swatch.setAttribute('role', 'option');
+      swatch.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
+      swatch.onclick = () => selectColor(color, swatch);
+      colorPickerEl.appendChild(swatch);
+    });
+
+    function selectColor(color, swatchEl) {
+      selectedColor = color;
+      document.getElementById('avatar-preview').style.background = color;
+      document.querySelectorAll('.color-swatch').forEach(s => {
+        s.classList.remove('active');
+        s.setAttribute('aria-selected', 'false');
+      });
+      swatchEl.classList.add('active');
+      swatchEl.setAttribute('aria-selected', 'true');
+    }
+
+    // Auto-update preview when typing name
+    document.getElementById('profile-name-input').addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      document.getElementById('avatar-preview').textContent = val
+        ? val.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+        : '?';
+    });
+
+    // ── Load profiles ─────────────────────────────
     async function loadProfiles() {
       try {
         const data = await fetchAPI('/profiles');
-        const grid = document.getElementById('profiles-grid');
-        grid.innerHTML = '';
-
-        // Render existing profiles
-        data.profiles.forEach(profile => {
-          const card = document.createElement('div');
-          card.className = 'profile-card';
-          card.onclick = () => selectProfile(profile);
-          card.innerHTML = `
-            <div class="profile-avatar-large" style="background: ${profile.avatar_color}">
-              ${getInitials(profile.profile_name)}
-            </div>
-            <div class="profile-name">${profile.profile_name}</div>
-          `;
-          grid.appendChild(card);
-        });
-
-        // Add "Add Profile" button if under limit
-        if (data.profiles.length < MAX_PROFILES) {
-          const addCard = document.createElement('div');
-          addCard.className = 'profile-card add-profile-card';
-          addCard.onclick = addProfile;
-          addCard.innerHTML = `
-            <div class="profile-avatar-large">
-              <i data-lucide="plus" style="width: 48px; height: 48px;"></i>
-            </div>
-            <div class="profile-name">Add Profile</div>
-          `;
-          grid.appendChild(addCard);
-        }
-
-        initIcons();
+        renderProfiles(data.profiles);
       } catch (error) {
         showToast(error.message, 'error');
+      }
+    }
+
+    function renderProfiles(profiles) {
+      const grid = document.getElementById('profiles-grid');
+      grid.innerHTML = '';
+
+      profiles.forEach(profile => {
+        const card = document.createElement('div');
+        card.className = 'profile-card' + (manageMode ? ' manage-mode' : '');
+        card.setAttribute('role', manageMode ? 'button' : 'button');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('aria-label', manageMode
+          ? `Delete profile ${profile.profile_name}`
+          : `Select profile ${profile.profile_name}`
+        );
+        card.onclick = () => manageMode ? deleteProfile(profile.id, profile.profile_name) : selectProfile(profile);
+        card.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') card.onclick(); };
+        card.innerHTML = `
+          <div class="profile-avatar-large" style="background:${profile.avatar_color}">
+            ${getInitials(profile.profile_name)}
+          </div>
+          <div class="profile-name">${profile.profile_name}</div>
+        `;
+        grid.appendChild(card);
+      });
+
+      // Add profile button (only when not in manage mode and under limit)
+      if (!manageMode && profiles.length < MAX_PROFILES) {
+        const addCard = document.createElement('div');
+        addCard.className = 'profile-card profile-add-card';
+        addCard.setAttribute('role', 'button');
+        addCard.setAttribute('tabindex', '0');
+        addCard.setAttribute('aria-label', 'Add new profile');
+        addCard.onclick = openModal;
+        addCard.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') openModal(); };
+        addCard.innerHTML = `
+          <div class="profile-avatar-large">
+            <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </div>
+          <div class="profile-name">Add Profile</div>
+        `;
+        grid.appendChild(addCard);
       }
     }
 
@@ -171,28 +438,94 @@
       window.location.href = '/home.html';
     }
 
-    async function addProfile() {
-      const profileName = prompt('Enter profile name:');
-      if (!profileName) return;
+    // ── Manage mode ───────────────────────────────
+    function toggleManageMode() {
+      manageMode = !manageMode;
+      const btn = document.getElementById('manage-btn');
+      if (manageMode) {
+        btn.textContent = 'Done';
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary');
+      } else {
+        btn.innerHTML = `
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Manage Profiles
+        `;
+        btn.classList.add('btn-secondary');
+        btn.classList.remove('btn-primary');
+      }
+      loadProfiles();
+    }
 
-      const randomColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
-
+    async function deleteProfile(id, name) {
+      if (!confirm(`Delete profile "${name}"? This will remove all watch history for this profile.`)) return;
       try {
-        await fetchAPI('/profiles', {
-          method: 'POST',
-          body: JSON.stringify({
-            profile_name: profileName,
-            avatar_color: randomColor
-          })
-        });
-
-        showToast('Profile created successfully', 'success');
+        await fetchAPI(`/profiles/${id}`, { method: 'DELETE' });
+        showToast('Profile deleted', 'success');
         loadProfiles();
       } catch (error) {
         showToast(error.message, 'error');
       }
     }
 
+    // ── Modal ─────────────────────────────────────
+    function openModal() {
+      document.getElementById('add-modal').classList.add('active');
+      document.getElementById('profile-name-input').value = '';
+      document.getElementById('avatar-preview').textContent = '?';
+      document.getElementById('avatar-preview').style.background = selectedColor;
+      setTimeout(() => document.getElementById('profile-name-input').focus(), 50);
+    }
+
+    function closeModal() {
+      document.getElementById('add-modal').classList.remove('active');
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('add-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeModal();
+    });
+
+    // Close modal on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+    });
+
+    // Submit on Enter in input
+    document.getElementById('profile-name-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') saveProfile();
+    });
+
+    async function saveProfile() {
+      const name = document.getElementById('profile-name-input').value.trim();
+      if (!name) {
+        document.getElementById('profile-name-input').focus();
+        document.getElementById('profile-name-input').classList.add('animate-shake');
+        setTimeout(() => document.getElementById('profile-name-input').classList.remove('animate-shake'), 500);
+        return;
+      }
+
+      const btn = document.getElementById('save-profile-btn');
+      btn.disabled = true;
+      btn.textContent = 'Creating…';
+
+      try {
+        await fetchAPI('/profiles', {
+          method: 'POST',
+          body: JSON.stringify({ profile_name: name, avatar_color: selectedColor })
+        });
+        closeModal();
+        showToast(`Profile "${name}" created!`, 'success');
+        loadProfiles();
+      } catch (error) {
+        showToast(error.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Profile';
+      }
+    }
+
+    // Boot
     loadProfiles();
   </script>
 </body>
